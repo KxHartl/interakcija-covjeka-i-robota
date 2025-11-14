@@ -58,9 +58,9 @@ def validate_on_others(classifier, root_dir, exclude_subdirs=None):
 
 if __name__ == "__main__":
     # Priprema lista direktorija s pravim labelama za trening
-    prezime = 'norsic_hartl'  # promijeni po projektu
-    train_brzo = os.path.join('datasets', prezime, prezime+'-brzo-filtered')
-    train_sporo = os.path.join('datasets', prezime, prezime+'-sporo-filtered')
+    prezime = 'norsic'  # promijeni po projektu
+    train_brzo = os.path.join('datasets\norsic-hartl\norsic-brzo-filtered')
+    train_sporo = os.path.join('datasets\norsic-hartl\norsic-sporo-filtered')
     train_dirs = [train_brzo, train_sporo]
     root_dir = 'datasets'
     lda_model, train_data = train_lda(train_dirs)
