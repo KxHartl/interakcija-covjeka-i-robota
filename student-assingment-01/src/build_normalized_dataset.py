@@ -8,13 +8,15 @@ def make_normalized_dataset(output_path='datasets/normalized/all_measurements.cs
     for root, dirs, files in os.walk('datasets'):
         if root.endswith('-filtered'):
             label_folder = os.path.basename(root)
-            if 'brzo' in label_folder:
+            # PREZIME = uzmi kao prefiks ispred -brzo-filtered ili -sporo-filtered
+            if label_folder.endswith('-brzo-filtered'):
+                prezime = label_folder.replace('-brzo-filtered','')
                 klasa = 1
-            elif 'sporo' in label_folder:
+            elif label_folder.endswith('-sporo-filtered'):
+                prezime = label_folder.replace('-sporo-filtered','')
                 klasa = 0
             else:
                 continue
-            prezime = os.path.basename(os.path.dirname(root)).split('-')[0]
             for f in files:
                 if not f.endswith('.csv') or f.startswith('.'):
                     continue
