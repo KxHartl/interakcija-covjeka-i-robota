@@ -136,5 +136,5 @@ def plot_all_data(data_dir='../../datasets', output_dir='plots'):
 
 if __name__ == "__main__":
     # Primjer upotrebe
-    # plot_data('../../datasets/norsic/norsic_brza01.csv')  # Za plotanje jedne datoteke
-    plot_all_data('../../datasets', 'plots')  # Za plotanje svih datoteka
+    # plot_data('datasets/cuk_pongracic/pongracic-sporo-processed/1.csv')  # Za plotanje jedne datoteke
+    plot_all_data('datasets', 'plots')  # Za plotanje svih datoteka
