@@ -85,8 +85,8 @@ def process_csv_files(base_path, velocity_threshold=0.05, dry_run=False):
 if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser(description="Uklanjanje mrtvog vremena iz mjerenja brzine robota")
-    parser.add_argument("--base-path", type=str, default="../../", help="Osnovni direktorij projekta (default: ../../)")
-    parser.add_argument("--threshold", type=float, default=0.05, help="Prag brzine u m/s za detekciju mrtvog vremena (default: 0.05)")
+    parser.add_argument("--base-path", type=str, default=".", help="Osnovni direktorij projekta (default: ../../)")
+    parser.add_argument("--threshold", type=float, default=0.0005, help="Prag brzine u m/s za detekciju mrtvog vremena (default: 0.05)")
     parser.add_argument("--dry-run", action="store_true", help="Prikaži što bi bilo promijenjeno bez zapisivanja promjena")
     args = parser.parse_args()
     process_csv_files(args.base_path, args.threshold, args.dry_run)
