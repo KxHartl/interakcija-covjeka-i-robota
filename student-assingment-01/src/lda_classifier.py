@@ -2,7 +2,7 @@ import pandas as pd
 from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, matthews_corrcoef, classification_report
 
-TRAIN_PREZIMENA = ['norsic', 'hartl']  # OVDJE NAVEDI PREZIMENA ZA TRENING (npr. ['norsic'] ili ['cuk','gugo'])
+TRAIN_PREZIMENA = ['akrap', 'gugo']  # OVDJE NAVEDI PREZIMENA ZA TRENING (npr. ['norsic'] ili ['cuk','gugo'])
 
 if __name__ == "__main__":
     df = pd.read_csv('datasets/normalized/all_measurements.csv')

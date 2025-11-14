@@ -17,7 +17,7 @@ if __name__ == "__main__":
             subset = df[(df['prezime']==prezime) & (df['klasa']==klasa)]
             if not subset.empty:
                 plt.scatter(subset['brzina'], subset['sila'], 
-                            c=[colors[i]], marker=marker_dict[klasa], s=70,
+                            c=[colors[i]], marker=marker_dict[klasa], s=40,
                             label=f"{prezime} {'sporo' if klasa==0 else 'brzo'}")
     handles, labels = plt.gca().get_legend_handles_labels()
     by_label = dict(zip(labels, handles))
