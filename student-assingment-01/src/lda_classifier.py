@@ -44,7 +44,7 @@ def validate_lda(classifier, val_dir):
 def validate_on_others(classifier, prezime1, prezime2):
     all_results = {}
     # Traži sve kombinacije prezime1-prezime2 kao korijen
-    roots = [os.path.join('datasets', f'{prezime1}-{prezime2}'), os.path.join('datasets', f'{prezime2}-{prezime1}')]
+    roots = os.path.join('datasets')
     for root in roots:
         for label in ['brzo', 'sporo']:
             filtered_dirs = glob.glob(os.path.join(root, f'*-{label}-filtered'))
@@ -64,8 +64,7 @@ if __name__ == "__main__":
     prezime2 = 'hartl'
     korijen = f'{prezime1}-{prezime2}'
     root_path = os.path.join('datasets', korijen)
-    train_dirs = [os.path.join(root_path, f'{prezime1}-brzo-filtered'), os.path.join(root_path, f'{prezime1}-sporo-filtered'),
-                  os.path.join(root_path, f'{prezime2}-brzo-filtered'), os.path.join(root_path, f'{prezime2}-sporo-filtered')]
+    train_dirs = [os.path.join(root_path, f'{prezime1}-brzo-filtered'), os.path.join(root_path, f'{prezime1}-sporo-filtered')]
     train_dirs = [d for d in train_dirs if os.path.isdir(d)]
     print("Trening set direktoriji:")
     for td in train_dirs:
