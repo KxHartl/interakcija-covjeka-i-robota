@@ -44,7 +44,7 @@ def plot_data(csv_file, base_output_dir='plots'):
     ax1.legend(lines1 + lines2, labels1 + labels2, loc='upper left')
     plt.tight_layout()
     # generiraj poddirektorij od relative path csva
-    rel_path = os.path.relpath(os.path.abspath(csv_file), os.path.abspath('../../datasets'))
+    rel_path = os.path.relpath(os.path.abspath(csv_file), os.path.abspath('datasets'))
     graph_dir = os.path.join(base_output_dir, os.path.dirname(rel_path))
     os.makedirs(graph_dir, exist_ok=True)
     output_file = os.path.join(graph_dir, f'{os.path.splitext(filename)[0]}_plot.png')
@@ -52,7 +52,7 @@ def plot_data(csv_file, base_output_dir='plots'):
     print(f"Graf spremljen: {output_file}")
     plt.close()
 
-def plot_all_data(data_dir='../../datasets', output_dir='plots'):
+def plot_all_data(data_dir='.', output_dir='plots'):
     csv_files = glob.glob(os.path.join(data_dir, '**', '*.csv'), recursive=True)
     if not csv_files:
         print(f"Nije pronađena nijedna CSV datoteka u direktoriju: {data_dir}")
