@@ -1,120 +1,221 @@
 import os
 import re
 from pathlib import Path
+import csv
+from datetime import datetime
 
-def process_norsic_files(base_path=None):
+
+def convert_to_csv(base_path=None):
     """
-    Obrađuje sve Norsic dataset datoteke i spaja dva retka u jedan.
-
-    Struktura prije:
-    timestamp | [x, y, z]
-    timestamp | [fx, fy, fz]
-
-    Struktura poslije:
-    timestamp | [x, y, z, fx, fy, fz]
+    FINALNI UNIVERZALNI konverter - radi sa SVIM formatima:
+    - Format 1: timestamp | [x,y,z,fx,fy,fz]
+    - Format 2: timestamp | [x,y,z]\n[fx,fy,fz]
+    - Format 3: [timestamp, x, y, z, fx, fy, fz]  ← NOVO za akrap_gugo
     """
 
-    # Ako nije eksplicitno zadano, postavi `base_path` na direktorij projekta
-    # koji sadrži folder `datasets`. Ovo omogućava pokretanje skripte iz bilo kojeg
-    # radnog direktorija, a putanje će uvijek biti relativne prema ovom skriptnom
-    # modulu (tj. repozitoriju/student-assingment-01).
     if base_path is None:
-        # Skripta se nalazi u: <project>/src/data-preparation/
-        # Krenemo 2 nivoa gore da dođemo do `src` roditelja, pa treći da dođemo do root
         base_path = Path(__file__).resolve().parents[2]
     else:
         base_path = Path(base_path)
 
-    # Direktoriji za obradu (relativno prema base_path)
-    norsic_dirs = [
-        base_path / 'datasets' / 'norsic_hartl' / 'norsic-brzo',
-        base_path / 'datasets' / 'norsic_hartl' / 'norsic_sopro'
+    print("=" * 80)
+    print("FINALNI UNIVERZALNI CSV KONVERTER")
+    print("=" * 80)
+    print(f"Base path: {base_path}")
+    print()
+
+    dataset_dirs = [
+        base_path / 'datasets' / 'cuk_pongracic' / 'cuk-brzo_processed',
+        base_path / 'datasets' / 'cuk_pongracic' / 'cuk-sporo_processed',
+        base_path / 'datasets' / 'cuk_pongracic' / 'pongracic-brzo_processed',
+        base_path / 'datasets' / 'cuk_pongracic' / 'pongracic-sporo_processed',
+        base_path / 'datasets' / 'norsic_hartl' / 'norsic-brzo_processed',
+        base_path / 'datasets' / 'norsic_hartl' / 'norsic_sopro_processed',
+        base_path / 'datasets' / 'akrap_gugo' / 'akrap-brzo',
+        base_path / 'datasets' / 'akrap_gugo' / 'akrap-sporo',
+        base_path / 'datasets' / 'akrap_gugo' / 'gugo-brzo',
+        base_path / 'datasets' / 'akrap_gugo' / 'gugo-sporo',
     ]
 
-    for dir_path in norsic_dirs:
-        full_path = Path(dir_path)
-        print(full_path)
-        if not full_path.exists():
-            print(f"Upozorenje: Direktorij {full_path} ne postoji!")
+    total_files = 0
+    successful_files = 0
+
+    for dir_path in dataset_dirs:
+        if not dir_path.exists():
             continue
 
-        # Kreiraj novi direktorij za obrađene datoteke
-        processed_dir = full_path.parent / (full_path.name + '_processed')
-        processed_dir.mkdir(parents=True, exist_ok=True)
+        print(f"📁 {dir_path.name}")
+        files = sorted([p for p in dir_path.iterdir() if p.is_file() and not p.name.endswith('.csv')])
 
-        # Obradi sve datoteke u direktoriju
-        files = sorted([p.name for p in full_path.iterdir() if p.is_file()])
+        if not files:
+            print(f"   Nema datoteka")
+            continue
 
-        for filename in files:
-            input_file = full_path / filename
-            output_file = processed_dir / filename
+        for input_file in files:
+            total_files += 1
+            # Spremi CSV koristeći stem (ukloni originalnu .txt ekstenziju)
+            csv_file = input_file.parent / f"{input_file.stem}.csv"
 
-            process_single_file(str(input_file), str(output_file))
-            print(f"Obrađena datoteka: {filename}")
+            result = convert_any_format(str(input_file), str(csv_file))
+            if result['success']:
+                successful_files += 1
+                print(f"   ✅ {input_file.name} → {result['rows']} redaka")
+            else:
+                print(f"   ❌ {input_file.name}: {result['error']}")
 
-    print("\nObrada završena!")
+        print()
 
-def process_single_file(input_path, output_path):
+    print("=" * 80)
+    print(f"ZAVRŠENO: {successful_files}/{total_files} uspješno")
+    print("=" * 80)
+
+
+def convert_any_format(input_path, output_path):
     """
-    Obrađuje pojedinačnu datoteku i spaja parove redaka.
+    Univerzalna konverzija - automatski detektira format
     """
-    with open(input_path, 'r') as f_in:
-        lines = f_in.readlines()
+    try:
+        with open(input_path, 'r', encoding='utf-8') as f:
+            lines = [line.strip() for line in f if line.strip()]
+    except Exception as e:
+        return {'success': False, 'rows': 0, 'error': f'Greška čitanja: {e}'}
 
-    processed_lines = []
+    if len(lines) == 0:
+        return {'success': False, 'rows': 0, 'error': 'Prazna datoteka'}
+
+    # Detektiraj format na osnovu prvog retka
+    first_line = lines[0]
+
+    # FORMAT 3: [timestamp, x, y, z, fx, fy, fz] - NEMA separatora |
+    if first_line.startswith('[') and '|' not in first_line:
+        return convert_format3(lines, output_path)
+
+    # FORMAT 1 ili 2: ima separator |
+    elif '|' in first_line:
+        return convert_format1_or_2(lines, output_path)
+
+    else:
+        return {'success': False, 'rows': 0, 'error': 'Nepoznat format'}
+
+
+def convert_format3(lines, output_path):
+    """
+    Format 3: [timestamp, x, y, z, fx, fy, fz]
+    Timestamp je UNIX epoch u sekundama
+    """
+    csv_rows = []
+
+    for line in lines:
+        try:
+            if not line.startswith('['):
+                continue
+
+            # Parsiraj sve vrijednosti
+            values = [v.strip() for v in line.strip('[]').split(',')]
+
+            if len(values) != 7:
+                continue
+
+            # Prva vrijednost je timestamp (UNIX epoch)
+            unix_timestamp = float(values[0])
+
+            # Konvertiraj UNIX timestamp u čitljiv format
+            dt = datetime.fromtimestamp(unix_timestamp)
+            timestamp_str = dt.strftime('%Y-%m-%d %H:%M:%S.%f')
+
+            # Ostale vrijednosti: x, y, z, fx, fy, fz
+            coords_and_forces = values[1:7]
+
+            # Kreiraj CSV redak
+            csv_row = [timestamp_str] + coords_and_forces
+            csv_rows.append(csv_row)
+
+        except Exception:
+            continue
+
+    if len(csv_rows) == 0:
+        return {'success': False, 'rows': 0, 'error': 'Nema validnih podataka (format 3)'}
+
+    # Zapiši CSV
+    try:
+        with open(output_path, 'w', newline='', encoding='utf-8') as f:
+            writer = csv.writer(f)
+            writer.writerow(['timestamp', 'x', 'y', 'z', 'fx', 'fy', 'fz'])
+            writer.writerows(csv_rows)
+        return {'success': True, 'rows': len(csv_rows), 'error': ''}
+    except Exception as e:
+        return {'success': False, 'rows': 0, 'error': f'Greška pisanja: {e}'}
+
+
+def convert_format1_or_2(lines, output_path):
+    """
+    Format 1: timestamp | [x,y,z,fx,fy,fz]
+    Format 2: timestamp | [x,y,z]\n[fx,fy,fz]
+    """
+    csv_rows = []
     i = 0
 
-    while i < len(lines) - 1:
-        # Uzmi dva uzastopna retka
-        line1 = lines[i].strip()
-        line2 = lines[i+1].strip()
+    while i < len(lines):
+        line = lines[i]
 
-        # Parsiraj prvi redak (timestamp | [x, y, z])
-        parts1 = line1.split('|')
-        if len(parts1) != 2:
+        if '|' not in line:
             i += 1
             continue
 
-        timestamp1 = parts1[0].strip()
-        coords1 = parts1[1].strip()
-
-        # Parsiraj drugi redak (timestamp | [fx, fy, fz])
-        parts2 = line2.split('|')
-        if len(parts2) != 2:
+        parts = line.split('|')
+        if len(parts) != 2:
             i += 1
             continue
 
-        timestamp2 = parts2[0].strip()
-        coords2 = parts2[1].strip()
+        timestamp = parts[0].strip()
+        coords = parts[1].strip()
 
-        # Provjeri jesu li timestampovi približno jednaki (unutar 1ms razlike)
-        # Koristi prvi timestamp
+        try:
+            if not coords.startswith('['):
+                i += 1
+                continue
 
-        # Izvuci vrijednosti iz zagrada
-        # coords1 format: [x, y, z]
-        # coords2 format: [fx, fy, fz]
+            values = [v.strip() for v in coords.strip('[]').split(',')]
 
-        # Ukloni zagrade i podijeli po zarezima
-        values1 = coords1.strip('[]').split(',')
-        values2 = coords2.strip('[]').split(',')
+            # Format 1: 6 vrijednosti u jednom retku
+            if len(values) == 6:
+                csv_row = [timestamp] + values
+                csv_rows.append(csv_row)
+                i += 1
 
-        if len(values1) == 3 and len(values2) == 3:
-            # Spoji sve vrijednosti
-            combined_values = values1 + values2
-            combined_coords = '[' + ', '.join([v.strip() for v in combined_values]) + ']'
+            # Format 2: 3 vrijednosti + sljedeći redak
+            elif len(values) == 3 and i + 1 < len(lines):
+                next_line = lines[i + 1].strip()
 
-            # Kreiraj novi redak
-            new_line = f"{timestamp1} | {combined_coords}\n"
-            processed_lines.append(new_line)
+                if next_line.startswith('[') and '|' not in next_line:
+                    values2 = [v.strip() for v in next_line.strip('[]').split(',')]
+                    if len(values2) == 3:
+                        csv_row = [timestamp] + values + values2
+                        csv_rows.append(csv_row)
+                        i += 2
+                    else:
+                        i += 1
+                else:
+                    i += 1
+            else:
+                i += 1
+        except Exception:
+            i += 1
+            continue
 
-        # Prijeđi na sljedeći par redaka
-        i += 2
+    if len(csv_rows) == 0:
+        return {'success': False, 'rows': 0, 'error': 'Nema validnih podataka (format 1/2)'}
 
-    # Zapiši obrađene retke u novu datoteku
-    with open(output_path, 'w') as f_out:
-        f_out.writelines(processed_lines)
+    # Zapiši CSV
+    try:
+        with open(output_path, 'w', newline='', encoding='utf-8') as f:
+            writer = csv.writer(f)
+            writer.writerow(['timestamp', 'x', 'y', 'z', 'fx', 'fy', 'fz'])
+            writer.writerows(csv_rows)
+        return {'success': True, 'rows': len(csv_rows), 'error': ''}
+    except Exception as e:
+        return {'success': False, 'rows': 0, 'error': f'Greška pisanja: {e}'}
+
 
 if __name__ == "__main__":
-    # Po defaultu skripta računa base path iz mjesta datoteke, tako da se
-    # može pokretati iz bilo kojeg direktorija.
-    process_norsic_files()
+    convert_to_csv()
