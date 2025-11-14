@@ -62,7 +62,7 @@ def process_csv_files(base_path, velocity_threshold=0.05, dry_run=False):
             print(f"  Nakon čišćenja: {cleaned_len} redova")
             print(f"  Uklonjeno: {removed} redova ({removed/original_len*100:.1f}%)\n")
             # Pripremi novi -deadtime direktorij
-            folder = csv_file.parent.name.replace('-csv','-deadtime')
+            folder = csv_file.parent.name.replace('-csv','-filtered')
             parent_dir = csv_file.parent.parent
             output_dir = parent_dir / folder
             os.makedirs(output_dir, exist_ok=True)
