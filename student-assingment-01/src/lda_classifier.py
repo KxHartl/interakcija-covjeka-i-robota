@@ -41,7 +41,7 @@ def validate_lda(classifier, val_dir):
     }
     return results, y_val, y_pred, val_files
 
-def validate_on_others(classifier, prezime1, prezime2):
+def validate_on_others(classifier):
     all_results = {}
     # Traži sve kombinacije prezime1-prezime2 kao korijen
     roots = os.path.join('datasets')
@@ -73,7 +73,7 @@ if __name__ == "__main__":
     if lda_model is None:
         exit(1)
     print("\nValidacija na svim prezime-label-filtered setovima (svaka podmreža iz rootova):")
-    results = validate_on_others(lda_model, prezime1, prezime2)
+    results = validate_on_others(lda_model)
     for subject, metrics in results.items():
         print(f"\n=== {subject} ===")
         for met, val in metrics.items():
