@@ -1,31 +1,21 @@
 #!/usr/bin/env python3
 """
-Program za uklanjanje mrtvog vremena iz mjerenja brzine robota.
+Program za filtriranje mrtvog vremena iz mjerenja brzine robota.
 
-Program prolazi kroz sve CSV datoteke u datasets direktorijima i uklanja
-mrtvo vrijeme - podatke s brzinom ispod praga (0.05 m/s) na početku i kraju mjerenja.
+Filtrirani (čisti) podaci ne zamjenjuju originalne: svaki output zapisuje se kao novi CSV u odgovarajući
+"-deadtime" direktorij pored originalnog foldera, zadržavajući naziv datoteke.
 """
-
 import os
 import pandas as pd
 import numpy as np
 from pathlib import Path
 from feature_calculation import calculate_velocity_from_xyz, calculate_force_magnitude_df
 
-
 def calculate_velocity(df):
-    """
-    Funkcija delegira calculation na calculate_velocity_from_xyz iz feature_calculation.py radi dosljednosti.
-    """
     return calculate_velocity_from_xyz(df)
 
-
 def calculate_force_magnitude(df):
-    """
-    Funkcija delegira calculation na calculate_force_magnitude_df iz feature_calculation.py radi dosljednosti.
-    """
     return calculate_force_magnitude_df(df)
-
 
 def remove_dead_time(df, velocity_threshold=0.05):
     if len(df) == 0:
@@ -44,7 +34,6 @@ def remove_dead_time(df, velocity_threshold=0.05):
     if start_idx >= end_idx:
         return df.iloc[0:0]
     return df.iloc[start_idx:end_idx + 1].copy()
-
 
 def process_csv_files(base_path, velocity_threshold=0.05, dry_run=False):
     base_path = Path(base_path)
@@ -72,8 +61,15 @@ def process_csv_files(base_path, velocity_threshold=0.05, dry_run=False):
             print(f"  Originalno: {original_len} redova")
             print(f"  Nakon čišćenja: {cleaned_len} redova")
             print(f"  Uklonjeno: {removed} redova ({removed/original_len*100:.1f}%)\n")
+            # Pripremi novi -deadtime direktorij
+            folder = csv_file.parent.name.replace('-csv','-deadtime')
+            parent_dir = csv_file.parent.parent
+            output_dir = parent_dir / folder
+            os.makedirs(output_dir, exist_ok=True)
+            output_csv = output_dir / csv_file.name
             if not dry_run:
-                df_cleaned.to_csv(csv_file, index=False)
+                df_cleaned.to_csv(output_csv, index=False)
+                print(f"  -> Filtrirani podatci spremljeni kao: {output_csv.relative_to(base_path)}")
         except Exception as e:
             print(f"Greška pri obradi {csv_file}: {e}\n")
     if dry_run:
@@ -81,10 +77,9 @@ def process_csv_files(base_path, velocity_threshold=0.05, dry_run=False):
     else:
         print("\nObrada završena!")
 
-
 if __name__ == "__main__":
     import argparse
-    parser = argparse.ArgumentParser(description="Uklanjanje mrtvog vremena iz mjerenja brzine robota")
+    parser = argparse.ArgumentParser(description="Filtriranje mrtvog vremena i spremanje u novi direktorij")
     parser.add_argument("--base-path", type=str, default="../../", help="Osnovni direktorij projekta (default: ../../)")
     parser.add_argument("--threshold", type=float, default=0.05, help="Prag brzine u m/s za detekciju mrtvog vremena (default: 0.05)")
     parser.add_argument("--dry-run", action="store_true", help="Prikaži što bi bilo promijenjeno bez zapisivanja promjena")
