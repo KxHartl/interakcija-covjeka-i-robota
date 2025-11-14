@@ -42,8 +42,8 @@ def validate_on_others(classifier, root_dir, exclude_subdir=None):
 
 if __name__ == "__main__":
     # Treniraj na norsic-hartl/norsic-brzina-filtered
-    train_dir = '../../datasets/norsic_hartl/norsic-brzina-filtered'
-    root_dir = '../../datasets'
+    train_dir = 'datasets/norsic_hartl/norsic-brzina-filtered'
+    root_dir = 'datasets'
     lda_model, train_data = train_lda(train_dir)
     # Validiraj na svim ostalim -filtered datasetovima
     results = validate_on_others(lda_model, root_dir, exclude_subdir='norsic_hartl/norsic-brzina-filtered')
