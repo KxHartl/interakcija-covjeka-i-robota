@@ -4,7 +4,7 @@ import os
 import glob
 from feature_calculation import calculate_velocity_from_xyz, calculate_force_magnitude_df
 
-def plot_data(csv_file, output_dir='plots'):
+def plot_data(csv_file, base_output_dir='plots'):
     try:
         data = pd.read_csv(csv_file)
     except Exception as e:
@@ -18,6 +18,10 @@ def plot_data(csv_file, output_dir='plots'):
 
     velocity = calculate_velocity_from_xyz(data)
     force = calculate_force_magnitude_df(data)
+    # dt može biti nepravilan, ovdje se za plot uzima jednoliko. Ako plot treba s točnim vremenom,
+    # time = pd.to_datetime(data['timestamp']) - pd.to_datetime(data['timestamp']).iloc[0]
+    # time = time.dt.total_seconds()
+    # Ali većina korisnika želi i dalje os po uzorku
     time = np.arange(len(data)) * 0.01
 
     import matplotlib.pyplot as plt
@@ -39,8 +43,11 @@ def plot_data(csv_file, output_dir='plots'):
     lines2, labels2 = ax2.get_legend_handles_labels()
     ax1.legend(lines1 + lines2, labels1 + labels2, loc='upper left')
     plt.tight_layout()
-    os.makedirs(output_dir, exist_ok=True)
-    output_file = os.path.join(output_dir, f'{os.path.splitext(filename)[0]}_plot.png')
+    # generiraj poddirektorij od relative path csva
+    rel_path = os.path.relpath(os.path.abspath(csv_file), os.path.abspath('../../datasets'))
+    graph_dir = os.path.join(base_output_dir, os.path.dirname(rel_path))
+    os.makedirs(graph_dir, exist_ok=True)
+    output_file = os.path.join(graph_dir, f'{os.path.splitext(filename)[0]}_plot.png')
     plt.savefig(output_file, dpi=300, bbox_inches='tight')
     print(f"Graf spremljen: {output_file}")
     plt.close()
@@ -57,7 +64,7 @@ def plot_all_data(data_dir='../../datasets', output_dir='plots'):
     for csv_file in csv_files:
         print(f"\nObrađujem: {csv_file}")
         plot_data(csv_file, output_dir)
-    print(f"\nSvi grafovi spremljeni u: {output_dir}")
+    print(f"\nSvi grafovi spremljeni organizirani po folderima u: {output_dir}")
 
 if __name__ == "__main__":
     plot_all_data('datasets', 'plots')
