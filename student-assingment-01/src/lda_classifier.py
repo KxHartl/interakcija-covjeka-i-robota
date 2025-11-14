@@ -31,13 +31,18 @@ def validate_lda(classifier, val_dir):
         print(f"Nema validacijskih podataka u {val_dir}")
         return None
     y_pred = classifier.predict(X_val)
+    # Dinamički utvrdi koji labeli su zaista prisutni
+    unique_labels = np.unique(np.concatenate([y_val, y_pred]))
+    # Osiguraj uvijek poznate klase (0 i 1) ako ih ima
+    all_labels = [0, 1]
+    target_names = ["Sporo", "Brzo"]
     results = {
         'accuracy': accuracy_score(y_val, y_pred),
-        'precision': precision_score(y_val, y_pred, zero_division=0),
-        'recall': recall_score(y_val, y_pred, zero_division=0),
-        'f1': f1_score(y_val, y_pred, zero_division=0),
+        'precision': precision_score(y_val, y_pred, labels=all_labels, zero_division=0, average=None),
+        'recall': recall_score(y_val, y_pred, labels=all_labels, zero_division=0, average=None),
+        'f1': f1_score(y_val, y_pred, labels=all_labels, zero_division=0, average=None),
         'mcc': matthews_corrcoef(y_val, y_pred),
-        'report': classification_report(y_val, y_pred, target_names=['Sporo', 'Brzo'])
+        'report': classification_report(y_val, y_pred, labels=all_labels, target_names=target_names, zero_division=0)
     }
     return results, y_val, y_pred, val_files
 
@@ -86,6 +91,6 @@ if __name__ == "__main__":
         print(f"\n=== {subject} ===")
         for met, val in metrics.items():
             if met != 'report':
-                print(f"{met}: {val:.4f}")
+                print(f"{met}: {val}")
         print("Klasifikacijski izvještaj:")
         print(metrics['report'])
