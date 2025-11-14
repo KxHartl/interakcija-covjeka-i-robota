@@ -8,11 +8,20 @@ from lda_feature_extraction import extract_features_and_labels
 from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, matthews_corrcoef, classification_report
 
-def train_lda(train_dir):
-    X_train, y_train, train_files = extract_features_and_labels(train_dir)
-    if X_train.shape[0] == 0:
-        print(f"Nema podatka za treniranje u {train_dir}")
-        return None, (X_train, y_train, train_files)
+def train_lda(train_dirs):
+    X_train = []
+    y_train = []
+    train_files = []
+    for td in train_dirs:
+        Xpart, ypart, fnames = extract_features_and_labels(td)
+        X_train.append(Xpart)
+        y_train.append(ypart)
+        train_files += fnames
+    if len(X_train) == 0 or np.concatenate(X_train).shape[0] == 0:
+        print(f"Nema podatka za treniranje u {train_dirs}")
+        return None, ([], [], [])
+    X_train = np.concatenate(X_train)
+    y_train = np.concatenate(y_train)
     lda = LinearDiscriminantAnalysis()
     lda.fit(X_train, y_train)
     return lda, (X_train, y_train, train_files)
@@ -33,10 +42,12 @@ def validate_lda(classifier, val_dir):
     }
     return results, y_val, y_pred, val_files
 
-def validate_on_others(classifier, root_dir, exclude_subdir=None):
+def validate_on_others(classifier, root_dir, exclude_subdirs=None):
+    if exclude_subdirs is None:
+        exclude_subdirs = []
     all_results = {}
     for dirpath in glob.glob(os.path.join(root_dir, '*-filtered')):
-        if exclude_subdir and exclude_subdir in dirpath:
+        if any(esd in dirpath for esd in exclude_subdirs):
             continue
         subject_name = os.path.basename(dirpath)
         result = validate_lda(classifier, dirpath)
@@ -46,12 +57,17 @@ def validate_on_others(classifier, root_dir, exclude_subdir=None):
     return all_results
 
 if __name__ == "__main__":
-    train_dir = 'datasets/norsic_hartl/norsic-brzina-filtered'
+    # Priprema lista direktorija s pravim labelama za trening
+    prezime = 'norsic_hartl'  # promijeni po projektu
+    train_brzo = os.path.join('datasets', prezime, prezime+'-brzo-filtered')
+    train_sporo = os.path.join('datasets', prezime, prezime+'-sporo-filtered')
+    train_dirs = [train_brzo, train_sporo]
     root_dir = 'datasets'
-    lda_model, train_data = train_lda(train_dir)
+    lda_model, train_data = train_lda(train_dirs)
     if lda_model is None:
         exit(1)
-    results = validate_on_others(lda_model, root_dir, exclude_subdir='norsic_hartl/norsic-brzina-filtered')
+    exclude_dirs = [train_brzo, train_sporo]
+    results = validate_on_others(lda_model, root_dir, exclude_subdirs=exclude_dirs)
     print("Rezultati validacije na ostalim skupovima:")
     for subject, metrics in results.items():
         print(f"\n=== {subject} ===")
