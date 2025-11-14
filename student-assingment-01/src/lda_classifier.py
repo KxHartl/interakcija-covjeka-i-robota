@@ -1,4 +1,6 @@
+import sys
 import os
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 import glob
 import pandas as pd
 import numpy as np
@@ -8,13 +10,16 @@ from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_sc
 
 def train_lda(train_dir):
     X_train, y_train, train_files = extract_features_and_labels(train_dir)
+    if X_train.shape[0] == 0:
+        print(f"Nema podatka za treniranje u {train_dir}")
+        return None, (X_train, y_train, train_files)
     lda = LinearDiscriminantAnalysis()
     lda.fit(X_train, y_train)
     return lda, (X_train, y_train, train_files)
 
 def validate_lda(classifier, val_dir):
     X_val, y_val, val_files = extract_features_and_labels(val_dir)
-    if len(y_val) == 0:
+    if X_val.shape[0] == 0:
         print(f"Nema validacijskih podataka u {val_dir}")
         return None
     y_pred = classifier.predict(X_val)
@@ -41,11 +46,11 @@ def validate_on_others(classifier, root_dir, exclude_subdir=None):
     return all_results
 
 if __name__ == "__main__":
-    # Treniraj na norsic-hartl/norsic-brzina-filtered
     train_dir = 'datasets/norsic_hartl/norsic-brzina-filtered'
     root_dir = 'datasets'
     lda_model, train_data = train_lda(train_dir)
-    # Validiraj na svim ostalim -filtered datasetovima
+    if lda_model is None:
+        exit(1)
     results = validate_on_others(lda_model, root_dir, exclude_subdir='norsic_hartl/norsic-brzina-filtered')
     print("Rezultati validacije na ostalim skupovima:")
     for subject, metrics in results.items():
