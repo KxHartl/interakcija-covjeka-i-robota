@@ -2,7 +2,6 @@ import sys
 import os
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 import glob
-import pandas as pd
 import numpy as np
 from lda_feature_extraction import extract_features_and_labels
 from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
@@ -42,33 +41,40 @@ def validate_lda(classifier, val_dir):
     }
     return results, y_val, y_pred, val_files
 
-def validate_on_others(classifier, root_dir, exclude_subdirs=None):
-    if exclude_subdirs is None:
-        exclude_subdirs = []
+def validate_on_others(classifier, prezime1, prezime2):
     all_results = {}
-    for dirpath in glob.glob(os.path.join(root_dir, 'norsic-hartl', '*-filtered')):
-        if any(esd in dirpath for esd in exclude_subdirs):
-            continue
-        subject_name = os.path.basename(dirpath)
-        result = validate_lda(classifier, dirpath)
-        if result is not None:
-            metrics = result[0]
-            all_results[subject_name] = metrics
+    # Traži sve kombinacije prezime1-prezime2 kao korijen
+    roots = [os.path.join('datasets', f'{prezime1}-{prezime2}'), os.path.join('datasets', f'{prezime2}-{prezime1}')]
+    for root in roots:
+        for label in ['brzo', 'sporo']:
+            filtered_dirs = glob.glob(os.path.join(root, f'*-{label}-filtered'))
+            for val_dir in filtered_dirs:
+                subject_name = os.path.basename(val_dir)
+                # Nemoj validirati na tren setovima
+                if val_dir in train_dirs: continue
+                result = validate_lda(classifier, val_dir)
+                if result is not None:
+                    metrics = result[0]
+                    all_results[subject_name] = metrics
     return all_results
 
 if __name__ == "__main__":
-    # Priprema lista direktorija s pravim labelama za trening -- koristi pravi / separator!
-    prezime = 'norsic-hartl'
-    train_brzo = os.path.join('datasets', prezime, prezime+'-brzo-filtered')
-    train_sporo = os.path.join('datasets', prezime, prezime+'-sporo-filtered')
-    train_dirs = [train_brzo, train_sporo]
-    root_dir = 'datasets'
+    # Parametri
+    prezime1 = 'norsic'
+    prezime2 = 'hartl'
+    korijen = f'{prezime1}-{prezime2}'
+    root_path = os.path.join('datasets', korijen)
+    train_dirs = [os.path.join(root_path, f'{prezime1}-brzo-filtered'), os.path.join(root_path, f'{prezime1}-sporo-filtered'),
+                  os.path.join(root_path, f'{prezime2}-brzo-filtered'), os.path.join(root_path, f'{prezime2}-sporo-filtered')]
+    train_dirs = [d for d in train_dirs if os.path.isdir(d)]
+    print("Trening set direktoriji:")
+    for td in train_dirs:
+        print(f"  {td}")
     lda_model, train_data = train_lda(train_dirs)
     if lda_model is None:
         exit(1)
-    exclude_dirs = [train_brzo, train_sporo]
-    results = validate_on_others(lda_model, root_dir, exclude_subdirs=exclude_dirs)
-    print("Rezultati validacije na ostalim skupovima:")
+    print("\nValidacija na svim prezime-label-filtered setovima (svaka podmreža iz rootova):")
+    results = validate_on_others(lda_model, prezime1, prezime2)
     for subject, metrics in results.items():
         print(f"\n=== {subject} ===")
         for met, val in metrics.items():
