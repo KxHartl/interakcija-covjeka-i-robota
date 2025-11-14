@@ -46,7 +46,7 @@ def validate_on_others(classifier, root_dir, exclude_subdirs=None):
     if exclude_subdirs is None:
         exclude_subdirs = []
     all_results = {}
-    for dirpath in glob.glob(os.path.join(root_dir, '*-filtered')):
+    for dirpath in glob.glob(os.path.join(root_dir, 'norsic-hartl', '*-filtered')):
         if any(esd in dirpath for esd in exclude_subdirs):
             continue
         subject_name = os.path.basename(dirpath)
@@ -57,10 +57,10 @@ def validate_on_others(classifier, root_dir, exclude_subdirs=None):
     return all_results
 
 if __name__ == "__main__":
-    # Priprema lista direktorija s pravim labelama za trening
-    prezime = 'norsic'  # promijeni po projektu
-    train_brzo = os.path.join('datasets\norsic-hartl\norsic-brzo-filtered')
-    train_sporo = os.path.join('datasets\norsic-hartl\norsic-sporo-filtered')
+    # Priprema lista direktorija s pravim labelama za trening -- koristi pravi / separator!
+    prezime = 'norsic-hartl'
+    train_brzo = os.path.join('datasets', prezime, prezime+'-brzo-filtered')
+    train_sporo = os.path.join('datasets', prezime, prezime+'-sporo-filtered')
     train_dirs = [train_brzo, train_sporo]
     root_dir = 'datasets'
     lda_model, train_data = train_lda(train_dirs)
