@@ -6,6 +6,7 @@ import numpy as np
 from lda_feature_extraction import extract_features_and_labels
 from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, matthews_corrcoef, classification_report
+import matplotlib.pyplot as plt
 
 def train_lda(train_dirs):
     X_train = []
@@ -23,6 +24,14 @@ def train_lda(train_dirs):
     y_train = np.concatenate(y_train)
     lda = LinearDiscriminantAnalysis()
     lda.fit(X_train, y_train)
+    # U train_lda funkciji, nakon fit-a:
+    print(f"\nTrening set značajke:")
+    print(f"  X shape: {X_train.shape}")
+    print(f"  y values: {np.unique(y_train, return_counts=True)}")
+    print(f"  Prosječna brzina za sporo (0): {X_train[y_train==0, 0].mean():.6f}")
+    print(f"  Prosječna brzina za brzo (1): {X_train[y_train==1, 0].mean():.6f}")
+    print(f"  Prosječna sila za sporo (0): {X_train[y_train==0, 1].mean():.6f}")
+    print(f"  Prosječna sila za brzo (1): {X_train[y_train==1, 1].mean():.6f}")
     return lda, (X_train, y_train, train_files)
 
 def validate_lda(classifier, val_dir):
@@ -84,7 +93,20 @@ if __name__ == "__main__":
         print(f"  {td}")
     lda_model, train_data = train_lda(train_dirs)
     if lda_model is None:
-        exit(1)
+        exit(1) 
+    
+    X_train, y_train, _ = train_data
+
+    import matplotlib.pyplot as plt
+
+    plt.scatter(X_train[y_train==0, 0], X_train[y_train==0, 1], c='blue', label='Sporo')
+    plt.scatter(X_train[y_train==1, 0], X_train[y_train==1, 1], c='red', label='Brzo')
+    plt.xlabel('Prosječna brzina')
+    plt.ylabel('Prosječna sila')
+    plt.legend()
+    plt.title("Scatter plot za trening podatke: Prosječna brzina vs sila")
+    plt.show()
+
     print("\nValidacija na svim -filtered setovima u cijelom datasets drvetu:")
     results = validate_on_all_filtered_dirs(lda_model, train_dirs)
     for subject, metrics in results.items():
