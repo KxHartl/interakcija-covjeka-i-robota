@@ -238,9 +238,9 @@ def main():
     print("="*60)
     
     # Definiranje putanja - TOČNE PUTANJE ZA VAŠE PODATKE
-    base_dir = Path("../data/raw/1137")  # Direktorij sa slikama
-    mat_file = base_dir / "1347.mat"      # Ground truth datoteka
-    output_dir = Path("../data/results/zadatak1")
+    base_dir = Path("./data/raw/")  # Direktorij sa slikama
+    mat_file = base_dir / "1337.mat"      # Ground truth datoteka
+    output_dir = Path("./data/results/zadatak1")
     output_dir.mkdir(parents=True, exist_ok=True)
     
     # Provjera postojanja .mat datoteke
