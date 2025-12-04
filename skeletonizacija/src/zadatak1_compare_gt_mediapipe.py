@@ -6,8 +6,8 @@ Autor: Krešimir Hartl
 Datum: Prosinac 2025
 
 Opis:
-    Skripta učitava 5 fotografija iz PennAction dataseta, ekstrahira
-    ground truth keypoints iz .mat datoteka, primjenjuje MediaPipe Pose
+    Skripta učitava 5 fotografija iz PennAction dataseta (video 1137), ekstrahira
+    ground truth keypoints iz 1347.mat datoteke, primjenjuje MediaPipe Pose
     detekciju i uspoređuje rezultate.
 """
 
@@ -62,7 +62,7 @@ def load_pennaction_ground_truth(mat_file: str, frame_idx: int = 0) -> np.ndarra
     
     Args:
         mat_file: Putanja do .mat datoteke
-        frame_idx: Indeks framea (default 0 za prvu sliku)
+        frame_idx: Indeks framea (0-indexed, tj. frame 1 = index 0)
     
     Returns:
         numpy array shape (13, 2) s (x, y) koordinatama
@@ -180,7 +180,7 @@ def process_single_image(image_path: str, mat_path: str, frame_idx: int = 0) -> 
     Args:
         image_path: Putanja do slike
         mat_path: Putanja do .mat datoteke
-        frame_idx: Indeks framea u videu
+        frame_idx: Indeks framea (0-indexed, tj. slika 000001.jpg = index 0)
     
     Returns:
         Dictionary s rezultatima
@@ -237,44 +237,54 @@ def main():
     print("ZADATAK 1: Usporedba Ground Truth i MediaPipe Keypoints")
     print("="*60)
     
-    # Definiranje putanja
-    base_dir = Path("../data/raw/PennAction")
+    # Definiranje putanja - TOČNE PUTANJE ZA VAŠE PODATKE
+    base_dir = Path("../data/raw/1137")  # Direktorij sa slikama
+    mat_file = base_dir / "1347.mat"      # Ground truth datoteka
     output_dir = Path("../data/results/zadatak1")
     output_dir.mkdir(parents=True, exist_ok=True)
     
-    # Odabir 5 slika (primjer - prilagoditi stvarnim podacima)
-    # Format: (video_id, frame_idx)
-    selected_images = [
-        ("0001", 50),   # Baseball pitch
-        ("0100", 30),   # Tennis serve
-        ("0200", 40),   # Golf swing
-        ("0300", 20),   # Jumping jacks
-        ("0400", 60)    # Squat
+    # Provjera postojanja .mat datoteke
+    if not mat_file.exists():
+        print(f"\n⚠️ GREŠKA: .mat datoteka ne postoji: {mat_file}")
+        print("Provjerite putanju do ground truth datoteke!")
+        return
+    
+    # Odabir 5 slika iz dostupnih (000001.jpg do 000031.jpg)
+    # Indeksi: 000001.jpg = frame_idx 0, 000005.jpg = frame_idx 4, itd.
+    selected_frames = [
+        1,   # 000001.jpg
+        5,   # 000005.jpg
+        10,  # 000010.jpg
+        15,  # 000015.jpg
+        20   # 000020.jpg
     ]
+    
+    print(f"\nUčitavanje ground truth iz: {mat_file}")
+    print(f"Broj odabranih slika: {len(selected_frames)}")
     
     all_results = []
     
-    for video_id, frame_idx in selected_images:
-        # Konstrukcija putanja
-        image_path = base_dir / "frames" / video_id / f"{frame_idx:06d}.jpg"
-        mat_path = base_dir / "labels" / f"{video_id}.mat"
+    for frame_num in selected_frames:
+        # Konstrukcija putanje do slike
+        image_filename = f"{frame_num:06d}.jpg"  # 000001.jpg format
+        image_path = base_dir / image_filename
+        
+        # Frame index je frame_num - 1 (jer je 000001.jpg = index 0)
+        frame_idx = frame_num - 1
         
         if not image_path.exists():
-            print(f"⚠️ Slika ne postoji: {image_path}")
-            continue
-        
-        if not mat_path.exists():
-            print(f"⚠️ .mat datoteka ne postoji: {mat_path}")
+            print(f"\n⚠️ Slika ne postoji: {image_path}")
             continue
         
         # Procesiranje
-        result = process_single_image(str(image_path), str(mat_path), frame_idx)
+        result = process_single_image(str(image_path), str(mat_file), frame_idx)
         
         if result is not None:
             all_results.append(result)
             
             # Vizualizacija
-            output_path = output_dir / f"comparison_{video_id}_frame{frame_idx}.jpg"
+            output_filename = f"comparison_frame{frame_num:06d}.jpg"
+            output_path = output_dir / output_filename
             visualize_comparison(
                 str(image_path),
                 result['gt_keypoints'],
@@ -332,9 +342,15 @@ def main():
         print(f"Prosječni RMSE:       {overall_rmse:.2f} px")
         print(f"Prosječna Mean Error: {overall_mean:.2f} px")
         print("="*60)
+        
+        print(f"\n✓ Zadatak završen! Rezultati su u direktoriju: {output_dir}")
     
     else:
         print("\n⚠️ Niti jedna slika nije uspješno procesirana!")
+        print("Provjerite:")
+        print("  1. Jesu li slike u ../data/raw/1137/")
+        print("  2. Je li 1347.mat u istom direktoriju")
+        print("  3. Jesu li instalirane sve potrebne biblioteke (requirements.txt)")
 
 
 if __name__ == "__main__":
