@@ -238,7 +238,7 @@ def main():
     print("="*60)
     
     # Definiranje putanja
-    base_dir = Path("../data/raw/PennAction")
+    base_dir = Path("../data/raw/")
     output_dir = Path("../data/results/zadatak1")
     output_dir.mkdir(parents=True, exist_ok=True)
     
