@@ -237,16 +237,24 @@ def main():
     print("ZADATAK 1: Usporedba Ground Truth i MediaPipe Keypoints")
     print("="*60)
     
-    # Definiranje putanja - TOČNE PUTANJE ZA VAŠE PODATKE
-    base_dir = Path("./data/raw/")  # Direktorij sa slikama
-    mat_file = base_dir / "1337.mat"      # Ground truth datoteka
-    output_dir = Path("./data/results/zadatak1")
+    # Definiranje putanja - TOČNE PUTANJE
+    base_dir = Path("../data/raw/1137")  # Direktorij sa slikama i .mat datotekom
+    mat_file = base_dir / "1347.mat"      # Ground truth datoteka
+    output_dir = Path("../data/results/zadatak1")
     output_dir.mkdir(parents=True, exist_ok=True)
+    
+    # Provjera postojanja direktorija
+    if not base_dir.exists():
+        print(f"\n⚠️ GREŠKA: Direktorij ne postoji: {base_dir}")
+        print("Provjerite da ste u src/ direktoriju i pokrenite:")
+        print("  cd skeletonizacija/src")
+        print("  python zadatak1_compare_gt_mediapipe.py")
+        return
     
     # Provjera postojanja .mat datoteke
     if not mat_file.exists():
         print(f"\n⚠️ GREŠKA: .mat datoteka ne postoji: {mat_file}")
-        print("Provjerite putanju do ground truth datoteke!")
+        print("Provjerite da je 1347.mat u direktoriju data/raw/1137/")
         return
     
     # Odabir 5 slika iz dostupnih (000001.jpg do 000031.jpg)
