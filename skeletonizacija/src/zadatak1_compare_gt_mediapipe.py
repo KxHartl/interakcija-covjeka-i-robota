@@ -239,7 +239,8 @@ def main():
     
     # Definiranje putanja - TOČNE PUTANJE
     base_dir = Path("../data/raw/1137")  # Direktorij sa slikama i .mat datotekom
-    mat_file = base_dir / "1347.mat"      # Ground truth datoteka
+    mat_file = base_dir / "1137.mat"      # Ground truth datoteka
+    print(f"\nKorišteni .mat datoteku: {mat_file}")
     output_dir = Path("../data/results/zadatak1")
     output_dir.mkdir(parents=True, exist_ok=True)
     
