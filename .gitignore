@@ -1,5 +1,10 @@
-venv/
-build/
-install/
-log/
+# ignore venv/build/install/log directories anywhere in the repo
+**/venv/
+**/build/
+**/install/
+**/log/
+
+# ignore video files
 *.mov
+*.mp4
+*.mkv
