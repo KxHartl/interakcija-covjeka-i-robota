@@ -1,0 +1,104 @@
+# Configuration for Nose Detection Program
+# Student Assignment 02
+
+# Model Configuration
+model:
+  name: "YOLO11 Pose Detection"
+  version: "yolo11s"
+  weights: "yolo11s-pose.pt"
+  alternative: "yolo11n-pose.pt"  # Faster but less accurate
+  confidence_threshold: 0.5
+
+# Camera Configuration
+camera:
+  device_id: 0  # 0 = default camera, 1 = second camera, etc.
+  frame_width: 1280
+  frame_height: 720
+  fps: 30
+  flip_horizontally: true  # For selfie view
+
+# Rectangle Configuration (Detection Zone)
+rectangle:
+  width: 200
+  height: 250
+  position: "center"  # Always center on screen
+  line_thickness: 3
+  # Colors (BGR format)
+  color_inside: [0, 255, 0]    # Green when nose is inside
+  color_outside: [0, 0, 255]   # Red when nose is outside
+
+# Nose Point Configuration
+nose_point:
+  radius: 8
+  color: [0, 255, 255]         # Yellow
+  outline_color: [255, 255, 255]  # White outline
+  outline_thickness: 2
+
+# Center Cross Configuration (Reference)
+cross:
+  size: 20
+  color: [255, 0, 0]           # Blue
+  thickness: 2
+
+# Display Configuration
+display:
+  window_title: "Nose Detection - Press q to quit"
+  show_fps: true
+  show_confidence: true
+  show_coordinates: true
+  show_status: true
+  font_size: 0.7
+  font_thickness: 2
+
+# Keypoint Indices (YOLO11)
+keypoints:
+  nose: 0
+  left_eye: 1
+  right_eye: 2
+  left_ear: 3
+  right_ear: 4
+  left_shoulder: 5
+  right_shoulder: 6
+  left_elbow: 7
+  right_elbow: 8
+  left_wrist: 9
+  right_wrist: 10
+  left_hip: 11
+  right_hip: 12
+  left_knee: 13
+  right_knee: 14
+  left_ankle: 15
+  right_ankle: 16
+
+# Performance Settings
+performance:
+  use_gpu: true  # Requires CUDA
+  max_workers: 4
+  cache_frames: false
+
+# Logging Configuration
+logging:
+  level: "INFO"  # DEBUG, INFO, WARNING, ERROR
+  save_logs: false
+  log_file: "nose_detection.log"
+
+# Output Configuration
+output:
+  save_video: false
+  save_frames: false
+  output_directory: "./output"
+  video_codec: "mp4v"
+  video_fps: 30
+
+# Debug Configuration
+debug:
+  enable_debug: false
+  show_fps: true
+  print_keypoint_data: false
+  save_debug_frames: false
+
+# Additional Features
+features:
+  sound_feedback: false  # Play sound when nose enters/exits
+  statistics_tracking: false  # Track time inside/outside
+  calibration_mode: false  # Allow dynamic rectangle adjustment
