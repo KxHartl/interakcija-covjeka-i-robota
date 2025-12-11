@@ -149,8 +149,8 @@ class StatisticalAnalyzer:
         """Analizira raspon framea."""
         print(f"\n{'='*70}")
         print(f"STATISTIČKA ANALIZA - Zadatak 1")
-        print(f"{'='*70}\n")
-
+        print(f"{'='*70}")
+        print(f"Data folder: {self.data_root}\n")
         print(f"Analiza framea {frame_start} do {frame_end}...\n")
 
         for frame_id in range(frame_start, frame_end + 1):
@@ -174,6 +174,7 @@ class StatisticalAnalyzer:
 
         stats = {
             'frame_count': len(self.euler_errors),
+            'data_folder': str(self.data_root),
             'euler': {
                 'pitch': {
                     'mean': float(np.mean(euler_array[:, 0])),
@@ -279,7 +280,7 @@ class StatisticalAnalyzer:
         euler_array = np.array(self.euler_errors)
 
         fig, axes = plt.subplots(1, 3, figsize=(15, 4))
-        fig.suptitle('Distribucija Euler Kutova - Ground Truth', fontsize=14, fontweight='bold')
+        fig.suptitle('Distribucija Euler Kutova - Ground Truth (HPE-24)', fontsize=14, fontweight='bold')
 
         angle_names = ['Pitch (X)', 'Yaw (Y)', 'Roll (Z)']
         colors = ['red', 'green', 'blue']
@@ -323,7 +324,8 @@ if __name__ == "__main__":
     print("TASK 1 - Statistička analiza Ground Truth podataka")
     print("="*70)
 
-    data_root = Path("./student-assingment-03/data/raw/hpe/03")
+    # Koristi data folder HPE-24
+    data_root = Path("./student-assingment-03/data/raw/hpe/24")
 
     if not data_root.exists():
         print(f"\n⚠️  Putanja ne postoji: {data_root}")
@@ -335,7 +337,7 @@ if __name__ == "__main__":
 
     # Analiza raspon framea
     frame_start = 100
-    frame_end = 110
+    frame_end = 120
 
     analyzer.analyze_range(frame_start, frame_end)
 
