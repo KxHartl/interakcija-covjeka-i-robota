@@ -1,11 +1,12 @@
 {
-  "timestamp": "2025-12-11T09:31:30.275609",
-  "total_frames": 11,
+  "timestamp": "2025-12-11T09:51:07.970014",
+  "total_frames": 21,
+  "data_folder": "..\\data\\raw\\hpe\\24",
   "results": [
     {
       "frame_id": 100,
       "status": "file_not_found",
-      "error": "RGB datoteka ne postoji: ..\\data\\raw\\hpe\\21\\frame_00100_rgb.png",
+      "error": "RGB datoteka ne postoji: ..\\data\\raw\\hpe\\24\\frame_00100_rgb.png",
       "ground_truth": {},
       "mediapipe": {},
       "comparison": {}
@@ -13,7 +14,7 @@
     {
       "frame_id": 101,
       "status": "file_not_found",
-      "error": "RGB datoteka ne postoji: ..\\data\\raw\\hpe\\21\\frame_00101_rgb.png",
+      "error": "RGB datoteka ne postoji: ..\\data\\raw\\hpe\\24\\frame_00101_rgb.png",
       "ground_truth": {},
       "mediapipe": {},
       "comparison": {}
@@ -21,7 +22,7 @@
     {
       "frame_id": 102,
       "status": "file_not_found",
-      "error": "RGB datoteka ne postoji: ..\\data\\raw\\hpe\\21\\frame_00102_rgb.png",
+      "error": "RGB datoteka ne postoji: ..\\data\\raw\\hpe\\24\\frame_00102_rgb.png",
       "ground_truth": {},
       "mediapipe": {},
       "comparison": {}
@@ -29,7 +30,7 @@
     {
       "frame_id": 103,
       "status": "file_not_found",
-      "error": "RGB datoteka ne postoji: ..\\data\\raw\\hpe\\21\\frame_00103_rgb.png",
+      "error": "RGB datoteka ne postoji: ..\\data\\raw\\hpe\\24\\frame_00103_rgb.png",
       "ground_truth": {},
       "mediapipe": {},
       "comparison": {}
@@ -37,7 +38,7 @@
     {
       "frame_id": 104,
       "status": "file_not_found",
-      "error": "RGB datoteka ne postoji: ..\\data\\raw\\hpe\\21\\frame_00104_rgb.png",
+      "error": "RGB datoteka ne postoji: ..\\data\\raw\\hpe\\24\\frame_00104_rgb.png",
       "ground_truth": {},
       "mediapipe": {},
       "comparison": {}
@@ -45,7 +46,7 @@
     {
       "frame_id": 105,
       "status": "file_not_found",
-      "error": "RGB datoteka ne postoji: ..\\data\\raw\\hpe\\21\\frame_00105_rgb.png",
+      "error": "RGB datoteka ne postoji: ..\\data\\raw\\hpe\\24\\frame_00105_rgb.png",
       "ground_truth": {},
       "mediapipe": {},
       "comparison": {}
@@ -53,7 +54,7 @@
     {
       "frame_id": 106,
       "status": "file_not_found",
-      "error": "RGB datoteka ne postoji: ..\\data\\raw\\hpe\\21\\frame_00106_rgb.png",
+      "error": "RGB datoteka ne postoji: ..\\data\\raw\\hpe\\24\\frame_00106_rgb.png",
       "ground_truth": {},
       "mediapipe": {},
       "comparison": {}
@@ -61,7 +62,7 @@
     {
       "frame_id": 107,
       "status": "file_not_found",
-      "error": "RGB datoteka ne postoji: ..\\data\\raw\\hpe\\21\\frame_00107_rgb.png",
+      "error": "RGB datoteka ne postoji: ..\\data\\raw\\hpe\\24\\frame_00107_rgb.png",
       "ground_truth": {},
       "mediapipe": {},
       "comparison": {}
@@ -69,7 +70,7 @@
     {
       "frame_id": 108,
       "status": "file_not_found",
-      "error": "RGB datoteka ne postoji: ..\\data\\raw\\hpe\\21\\frame_00108_rgb.png",
+      "error": "RGB datoteka ne postoji: ..\\data\\raw\\hpe\\24\\frame_00108_rgb.png",
       "ground_truth": {},
       "mediapipe": {},
       "comparison": {}
@@ -77,7 +78,7 @@
     {
       "frame_id": 109,
       "status": "file_not_found",
-      "error": "RGB datoteka ne postoji: ..\\data\\raw\\hpe\\21\\frame_00109_rgb.png",
+      "error": "RGB datoteka ne postoji: ..\\data\\raw\\hpe\\24\\frame_00109_rgb.png",
       "ground_truth": {},
       "mediapipe": {},
       "comparison": {}
@@ -85,7 +86,87 @@
     {
       "frame_id": 110,
       "status": "file_not_found",
-      "error": "RGB datoteka ne postoji: ..\\data\\raw\\hpe\\21\\frame_00110_rgb.png",
+      "error": "RGB datoteka ne postoji: ..\\data\\raw\\hpe\\24\\frame_00110_rgb.png",
+      "ground_truth": {},
+      "mediapipe": {},
+      "comparison": {}
+    },
+    {
+      "frame_id": 111,
+      "status": "file_not_found",
+      "error": "RGB datoteka ne postoji: ..\\data\\raw\\hpe\\24\\frame_00111_rgb.png",
+      "ground_truth": {},
+      "mediapipe": {},
+      "comparison": {}
+    },
+    {
+      "frame_id": 112,
+      "status": "file_not_found",
+      "error": "RGB datoteka ne postoji: ..\\data\\raw\\hpe\\24\\frame_00112_rgb.png",
+      "ground_truth": {},
+      "mediapipe": {},
+      "comparison": {}
+    },
+    {
+      "frame_id": 113,
+      "status": "file_not_found",
+      "error": "RGB datoteka ne postoji: ..\\data\\raw\\hpe\\24\\frame_00113_rgb.png",
+      "ground_truth": {},
+      "mediapipe": {},
+      "comparison": {}
+    },
+    {
+      "frame_id": 114,
+      "status": "file_not_found",
+      "error": "RGB datoteka ne postoji: ..\\data\\raw\\hpe\\24\\frame_00114_rgb.png",
+      "ground_truth": {},
+      "mediapipe": {},
+      "comparison": {}
+    },
+    {
+      "frame_id": 115,
+      "status": "file_not_found",
+      "error": "RGB datoteka ne postoji: ..\\data\\raw\\hpe\\24\\frame_00115_rgb.png",
+      "ground_truth": {},
+      "mediapipe": {},
+      "comparison": {}
+    },
+    {
+      "frame_id": 116,
+      "status": "file_not_found",
+      "error": "RGB datoteka ne postoji: ..\\data\\raw\\hpe\\24\\frame_00116_rgb.png",
+      "ground_truth": {},
+      "mediapipe": {},
+      "comparison": {}
+    },
+    {
+      "frame_id": 117,
+      "status": "file_not_found",
+      "error": "RGB datoteka ne postoji: ..\\data\\raw\\hpe\\24\\frame_00117_rgb.png",
+      "ground_truth": {},
+      "mediapipe": {},
+      "comparison": {}
+    },
+    {
+      "frame_id": 118,
+      "status": "file_not_found",
+      "error": "RGB datoteka ne postoji: ..\\data\\raw\\hpe\\24\\frame_00118_rgb.png",
+      "ground_truth": {},
+      "mediapipe": {},
+      "comparison": {}
+    },
+    {
+      "frame_id": 119,
+      "status": "file_not_found",
+      "error": "RGB datoteka ne postoji: ..\\data\\raw\\hpe\\24\\frame_00119_rgb.png",
+      "ground_truth": {},
+      "mediapipe": {},
+      "comparison": {}
+    },
+    {
+      "frame_id": 120,
+      "status": "file_not_found",
+      "error": "RGB datoteka ne postoji: ..\\data\\raw\\hpe\\24\\frame_00120_rgb.png",
       "ground_truth": {},
       "mediapipe": {},
       "comparison": {}
