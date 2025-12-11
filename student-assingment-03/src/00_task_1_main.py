@@ -269,7 +269,8 @@ class Task1Analyzer:
         print(f"\n{'='*70}")
         print(f"Analiza Zadatka 1: Ground Truth vs MediaPipe")
         print(f"{'='*70}")
-        print(f"\nProcessiranje framea {frame_start} do {frame_end}...\n")
+        print(f"\nData folder: {self.data_root}")
+        print(f"Processiranje framea {frame_start} do {frame_end}...\n")
 
         for frame_id in range(frame_start, frame_end + 1):
             result = self.process_frame(frame_id)
@@ -300,6 +301,7 @@ class Task1Analyzer:
             json.dump({
                 'timestamp': datetime.now().isoformat(),
                 'total_frames': len(self.results),
+                'data_folder': str(self.data_root),
                 'results': json_results
             }, f, indent=2, ensure_ascii=False)
 
@@ -338,19 +340,14 @@ class Task1Analyzer:
 # ============================================================================
 
 if __name__ == "__main__":
-    # Prilagodi putanju prema vlastitoj strukturi
-    # Primjer: 
-    # data_root = Path("./data/raw/hpe/03")
-    # ili
-    # data_root = Path("student-assingment-03/data/raw/hpe/03")
-    
-    data_root = Path("..//data/raw/hpe/21")
+    # Koristi data folder HPE-24
+    data_root = Path("./student-assingment-03/data/raw/hpe/24")
     
     # Ako putanja ne postoji, ispiši upozorenje
     if not data_root.exists():
-        print(f"⚠️  Putanja ne postoji: {data_root}")
+        print(f"\n⚠️  Putanja ne postoji: {data_root}")
         print("\nPrilagodi 'data_root' putanju prema svojoj strukturi direktorija.")
-        print("Primjer:\n  data_root = Path('..//data/raw/hpe/21')")
+        print("Primjer:\n  data_root = Path('./student-assingment-03/data/raw/hpe/24')")
         print("\nZavršavam...\n")
         exit(1)
 
@@ -358,9 +355,9 @@ if __name__ == "__main__":
     analyzer = Task1Analyzer(data_root)
 
     # Procesiraj frame raspon
-    # Prilagodi raspon prema dostupnim framea
+    # Prilagodi raspon prema dostupnim frameima
     frame_start = 100
-    frame_end = 110  # Procesiraj 11 framea (100-110)
+    frame_end = 120  # Procesiraj framee 100-120
 
     analyzer.process_range(frame_start, frame_end)
     analyzer.print_summary()
