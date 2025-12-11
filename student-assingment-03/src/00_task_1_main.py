@@ -344,13 +344,13 @@ if __name__ == "__main__":
     # ili
     # data_root = Path("student-assingment-03/data/raw/hpe/03")
     
-    data_root = Path("./student-assingment-03/data/raw/hpe/03")
+    data_root = Path("..//data/raw/hpe/21")
     
     # Ako putanja ne postoji, ispiši upozorenje
     if not data_root.exists():
         print(f"⚠️  Putanja ne postoji: {data_root}")
         print("\nPrilagodi 'data_root' putanju prema svojoj strukturi direktorija.")
-        print("Primjer:\n  data_root = Path('C:/Users/tvoj_username/data/hpe/03')")
+        print("Primjer:\n  data_root = Path('..//data/raw/hpe/21')")
         print("\nZavršavam...\n")
         exit(1)
 
