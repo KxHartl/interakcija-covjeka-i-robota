@@ -284,7 +284,7 @@ class Task1Analyzer:
 
 if __name__ == "__main__":
     # Koristi data folder HPE-24
-    data_root = Path("./student-assingment-03/data/raw/hpe/24")
+    data_root = Path("../data/raw/hpe/24")
     
     # Ako putanja ne postoji, ispiši upozorenje
     if not data_root.exists():

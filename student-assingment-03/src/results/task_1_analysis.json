@@ -1,175 +1,49 @@
 {
-  "timestamp": "2025-12-11T09:51:07.970014",
-  "total_frames": 21,
+  "timestamp": "2025-12-11T09:58:01.470680",
+  "total_frames": 6,
   "data_folder": "..\\data\\raw\\hpe\\24",
+  "available_frames": [
+    50,
+    150,
+    250,
+    350,
+    420,
+    508
+  ],
   "results": [
     {
-      "frame_id": 100,
-      "status": "file_not_found",
-      "error": "RGB datoteka ne postoji: ..\\data\\raw\\hpe\\24\\frame_00100_rgb.png",
-      "ground_truth": {},
-      "mediapipe": {},
-      "comparison": {}
-    },
-    {
-      "frame_id": 101,
-      "status": "file_not_found",
-      "error": "RGB datoteka ne postoji: ..\\data\\raw\\hpe\\24\\frame_00101_rgb.png",
-      "ground_truth": {},
-      "mediapipe": {},
-      "comparison": {}
-    },
-    {
-      "frame_id": 102,
-      "status": "file_not_found",
-      "error": "RGB datoteka ne postoji: ..\\data\\raw\\hpe\\24\\frame_00102_rgb.png",
-      "ground_truth": {},
-      "mediapipe": {},
-      "comparison": {}
-    },
-    {
-      "frame_id": 103,
-      "status": "file_not_found",
-      "error": "RGB datoteka ne postoji: ..\\data\\raw\\hpe\\24\\frame_00103_rgb.png",
-      "ground_truth": {},
-      "mediapipe": {},
-      "comparison": {}
-    },
-    {
-      "frame_id": 104,
-      "status": "file_not_found",
-      "error": "RGB datoteka ne postoji: ..\\data\\raw\\hpe\\24\\frame_00104_rgb.png",
-      "ground_truth": {},
-      "mediapipe": {},
-      "comparison": {}
-    },
-    {
-      "frame_id": 105,
-      "status": "file_not_found",
-      "error": "RGB datoteka ne postoji: ..\\data\\raw\\hpe\\24\\frame_00105_rgb.png",
-      "ground_truth": {},
-      "mediapipe": {},
-      "comparison": {}
-    },
-    {
-      "frame_id": 106,
-      "status": "file_not_found",
-      "error": "RGB datoteka ne postoji: ..\\data\\raw\\hpe\\24\\frame_00106_rgb.png",
-      "ground_truth": {},
-      "mediapipe": {},
-      "comparison": {}
-    },
-    {
-      "frame_id": 107,
-      "status": "file_not_found",
-      "error": "RGB datoteka ne postoji: ..\\data\\raw\\hpe\\24\\frame_00107_rgb.png",
-      "ground_truth": {},
-      "mediapipe": {},
-      "comparison": {}
-    },
-    {
-      "frame_id": 108,
-      "status": "file_not_found",
-      "error": "RGB datoteka ne postoji: ..\\data\\raw\\hpe\\24\\frame_00108_rgb.png",
-      "ground_truth": {},
-      "mediapipe": {},
-      "comparison": {}
-    },
-    {
-      "frame_id": 109,
-      "status": "file_not_found",
-      "error": "RGB datoteka ne postoji: ..\\data\\raw\\hpe\\24\\frame_00109_rgb.png",
-      "ground_truth": {},
-      "mediapipe": {},
-      "comparison": {}
-    },
-    {
-      "frame_id": 110,
-      "status": "file_not_found",
-      "error": "RGB datoteka ne postoji: ..\\data\\raw\\hpe\\24\\frame_00110_rgb.png",
-      "ground_truth": {},
-      "mediapipe": {},
-      "comparison": {}
-    },
-    {
-      "frame_id": 111,
-      "status": "file_not_found",
-      "error": "RGB datoteka ne postoji: ..\\data\\raw\\hpe\\24\\frame_00111_rgb.png",
-      "ground_truth": {},
-      "mediapipe": {},
-      "comparison": {}
-    },
-    {
-      "frame_id": 112,
-      "status": "file_not_found",
-      "error": "RGB datoteka ne postoji: ..\\data\\raw\\hpe\\24\\frame_00112_rgb.png",
-      "ground_truth": {},
-      "mediapipe": {},
-      "comparison": {}
-    },
-    {
-      "frame_id": 113,
-      "status": "file_not_found",
-      "error": "RGB datoteka ne postoji: ..\\data\\raw\\hpe\\24\\frame_00113_rgb.png",
-      "ground_truth": {},
-      "mediapipe": {},
-      "comparison": {}
-    },
-    {
-      "frame_id": 114,
-      "status": "file_not_found",
-      "error": "RGB datoteka ne postoji: ..\\data\\raw\\hpe\\24\\frame_00114_rgb.png",
-      "ground_truth": {},
-      "mediapipe": {},
-      "comparison": {}
-    },
-    {
-      "frame_id": 115,
-      "status": "file_not_found",
-      "error": "RGB datoteka ne postoji: ..\\data\\raw\\hpe\\24\\frame_00115_rgb.png",
-      "ground_truth": {},
-      "mediapipe": {},
-      "comparison": {}
-    },
-    {
-      "frame_id": 116,
-      "status": "file_not_found",
-      "error": "RGB datoteka ne postoji: ..\\data\\raw\\hpe\\24\\frame_00116_rgb.png",
-      "ground_truth": {},
-      "mediapipe": {},
-      "comparison": {}
-    },
-    {
-      "frame_id": 117,
-      "status": "file_not_found",
-      "error": "RGB datoteka ne postoji: ..\\data\\raw\\hpe\\24\\frame_00117_rgb.png",
-      "ground_truth": {},
-      "mediapipe": {},
-      "comparison": {}
-    },
-    {
-      "frame_id": 118,
-      "status": "file_not_found",
-      "error": "RGB datoteka ne postoji: ..\\data\\raw\\hpe\\24\\frame_00118_rgb.png",
-      "ground_truth": {},
-      "mediapipe": {},
-      "comparison": {}
-    },
-    {
-      "frame_id": 119,
-      "status": "file_not_found",
-      "error": "RGB datoteka ne postoji: ..\\data\\raw\\hpe\\24\\frame_00119_rgb.png",
-      "ground_truth": {},
-      "mediapipe": {},
-      "comparison": {}
-    },
-    {
-      "frame_id": 120,
-      "status": "file_not_found",
-      "error": "RGB datoteka ne postoji: ..\\data\\raw\\hpe\\24\\frame_00120_rgb.png",
-      "ground_truth": {},
-      "mediapipe": {},
-      "comparison": {}
-    }
-  ]
-}
+      "frame_id": 50,
+      "status": "success",
+      "error": null,
+      "ground_truth": {
+        "rotation_matrix": [
+          [
+            0.983814001083374,
+            0.0014430000446736813,
+            0.17918899655342102
+          ],
+          [
+            -0.06344279646873474,
+            0.9380040168762207,
+            0.34077000617980957
+          ],
+          [
+            -0.1675879955291748,
+            -0.3466219902038574,
+            0.9229120016098022
+          ]
+        ],
+        "translation_m": [
+          0.1104310005903244,
+          -0.0005585479666478932,
+          0.9403910040855408
+        ],
+        "euler_angles_deg": [
+          -20.584885851898097,
+          9.647606198037963,
+          -3.6896997447848907
+        ]
+      },
+      "mediapipe": {
+        "detected": true,
+        "landmarks": 
