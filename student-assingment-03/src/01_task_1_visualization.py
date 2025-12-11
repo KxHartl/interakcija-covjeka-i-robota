@@ -4,6 +4,7 @@
 Zadatak 1: Vizualizacija - Usporedba Ground Truth i MediaPipe predikcija
 
 Vizualizira 3D koordinatne osi, MediaPipe keypointe i predikcije na slikama.
+Dataset: HPE-24 sa frameima 50, 150, 250, 350, 420, 508
 
 Autor: Student
 Datum: 2025
@@ -24,6 +25,9 @@ K = np.array([
     [0.0, 575.816, 240.0],
     [0.0, 0.0, 1.0]
 ], dtype=np.float32)
+
+# Dostupni framea u HPE-24 datasetu
+AVAILABLE_FRAMES = [50, 150, 250, 350, 420, 508]
 
 # Boje za vizualizaciju
 COLOR_RED = (0, 0, 255)      # BGR: crvena
@@ -60,17 +64,6 @@ def project_point(P: np.ndarray, K_mat: np.ndarray = K) -> Tuple[int, int]:
     u = p[0] / p[2]
     v = p[1] / p[2]
     return int(round(u)), int(round(v))
-
-
-def project_points(points_3d: np.ndarray, K_mat: np.ndarray = K) -> np.ndarray:
-    """Projektira više 3D točaka u 2D."""
-    points_2d = []
-    for p in points_3d:
-        proj = K_mat @ p
-        u = proj[0] / proj[2]
-        v = proj[1] / proj[2]
-        points_2d.append([u, v])
-    return np.array(points_2d)
 
 
 def is_point_in_image(u: int, v: int, img_shape: Tuple[int, int]) -> bool:
@@ -310,61 +303,57 @@ if __name__ == "__main__":
     # Kreiraj visualizer
     visualizer = VisualizerTask1(K)
 
-    # Procesiraj test frame
-    frame_id = 100
-    rgb_path = data_root / f"frame_{frame_id:05d}_rgb.png"
-    pose_path = data_root / f"frame_{frame_id:05d}_pose.txt"
+    # Procesiraj sve dostupne framee
+    print(f"Dostupni framea: {AVAILABLE_FRAMES}\n")
+    
+    for frame_id in AVAILABLE_FRAMES:
+        rgb_path = data_root / f"frame_{frame_id:05d}_rgb.png"
+        pose_path = data_root / f"frame_{frame_id:05d}_pose.txt"
 
-    if not rgb_path.exists():
-        print(f"⚠️  RGB datoteka ne postoji: {rgb_path}")
-        print("Prilagodi frame_id prema dostupnim datotekama.\n")
-        exit(1)
+        if not rgb_path.exists():
+            print(f"[Frame {frame_id:05d}] RGB datoteka ne postoji\n")
+            continue
 
-    # Učitaj sliku
-    img_bgr = cv2.imread(str(rgb_path))
-    img_rgb = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2RGB)
+        # Učitaj sliku
+        img_bgr = cv2.imread(str(rgb_path))
+        img_rgb = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2RGB)
 
-    print(f"Učitana slika: {rgb_path.name}")
-    print(f"Dimenzije: {img_bgr.shape[1]} x {img_bgr.shape[0]}")
-    print(f"Data folder: {data_root}\n")
+        print(f"Učitana slika: {rgb_path.name}")
+        print(f"Dimenzije: {img_bgr.shape[1]} x {img_bgr.shape[0]}")
 
-    # Ground Truth
-    R_gt, T_gt = None, None
-    has_gt = False
-    if pose_path.exists():
-        try:
-            R_gt, T_gt = load_biwi_pose_txt(str(pose_path))
-            has_gt = True
-            print(f"Ground Truth pose učitan")
-        except Exception as e:
-            print(f"Greška pri učitavanju pose: {e}")
+        # Ground Truth
+        R_gt, T_gt = None, None
+        has_gt = False
+        if pose_path.exists():
+            try:
+                R_gt, T_gt = load_biwi_pose_txt(str(pose_path))
+                has_gt = True
+                print(f"Ground Truth pose učitan")
+            except Exception as e:
+                print(f"Greška pri učitavanju pose: {e}")
 
-    # MediaPipe
-    mp_result = visualizer.extract_mediapipe_landmarks(img_rgb)
-    print(f"MediaPipe: {'Detektiran' if mp_result['detected'] else 'Nije detektiran'}")
-    if mp_result['detected']:
-        print(f"  - Broj keypointa: {mp_result['count']}")
+        # MediaPipe
+        mp_result = visualizer.extract_mediapipe_landmarks(img_rgb)
+        print(f"MediaPipe: {'Detektiran' if mp_result['detected'] else 'Nije detektiran'}")
+        if mp_result['detected']:
+            print(f"  - Broj keypointa: {mp_result['count']}")
 
-    # Vizualizacija
-    img_vis = visualizer.draw_comparison_image(
-        img_bgr,
-        R_gt=R_gt,
-        T_gt=T_gt,
-        mp_landmarks=mp_result['landmarks_2d'] if mp_result['detected'] else None
-    )
+        # Vizualizacija
+        img_vis = visualizer.draw_comparison_image(
+            img_bgr,
+            R_gt=R_gt,
+            T_gt=T_gt,
+            mp_landmarks=mp_result['landmarks_2d'] if mp_result['detected'] else None
+        )
 
-    # Dodaj tekst
-    img_vis = visualizer.add_text_info(img_vis, frame_id, has_gt, mp_result['detected'])
+        # Dodaj tekst
+        img_vis = visualizer.add_text_info(img_vis, frame_id, has_gt, mp_result['detected'])
 
-    # Prikaži
-    print(f"\nPrikazižem sliku...")
-    cv2.imshow("Task 1 - Ground Truth vs MediaPipe", img_vis)
-    print("Pritisni bilo koju tipku da zatvoriš...")
-    cv2.waitKey(0)
-    cv2.destroyAllWindows()
+        # Spremi vizualizaciju
+        output_path = Path(f"./results/task_1_visualization_frame_{frame_id:05d}.png")
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        cv2.imwrite(str(output_path), img_vis)
+        print(f"✓ Vizualizacija spremljena u: {output_path.name}\n")
 
-    # Opciono: spremi vizualizaciju
-    output_path = Path("./results/task_1_visualization.png")
-    output_path.parent.mkdir(parents=True, exist_ok=True)
-    cv2.imwrite(str(output_path), img_vis)
-    print(f"✓ Vizualizacija spremljena u: {output_path}\n")
+    print("="*70)
+    print("✓ Sve vizualizacije su generirane!\n")
