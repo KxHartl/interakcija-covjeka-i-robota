@@ -299,8 +299,8 @@ if __name__ == "__main__":
     print("TASK 1 - Vizualizacija usporedbe Ground Truth i MediaPipe")
     print("="*70 + "\n")
 
-    # Prilagodi putanju
-    data_root = Path("./student-assingment-03/data/raw/hpe/03")
+    # Koristi data folder HPE-24
+    data_root = Path("./student-assingment-03/data/raw/hpe/24")
 
     if not data_root.exists():
         print(f"⚠️  Putanja ne postoji: {data_root}")
@@ -326,6 +326,7 @@ if __name__ == "__main__":
 
     print(f"Učitana slika: {rgb_path.name}")
     print(f"Dimenzije: {img_bgr.shape[1]} x {img_bgr.shape[0]}")
+    print(f"Data folder: {data_root}\n")
 
     # Ground Truth
     R_gt, T_gt = None, None
