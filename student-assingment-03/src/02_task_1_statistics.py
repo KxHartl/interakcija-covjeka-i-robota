@@ -1,9 +1,12 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Zadatak 1: Statistička analiza usporedbe Ground Truth i MediaPipe
+Zadatak 1: Statistička analiza - Ground Truth podataka
 
-Izračunava greške, odbijanja, statističke mjere i vizualizira rezultate.
+Analizira statističke karakteristike (mean, std, min, max) 
+Euler kutova i translacije iz Ground Truth podataka.
+
+Dataset: HPE-24 sa frameima 50, 150, 250, 350, 420, 508
 
 Autor: Student
 Datum: 2025
@@ -15,19 +18,19 @@ from pathlib import Path
 from typing import Dict, Tuple, List
 import math
 
-try:
-    import matplotlib.pyplot as plt
-    HAS_MATPLOTLIB = True
-except ImportError:
-    HAS_MATPLOTLIB = False
-    print("⚠️  Matplotlib nije dostupan. Grafici nece biti generirani.")
+# ============================================================================
+# KONSTANTE
+# ============================================================================
+
+# Dostupni framea u HPE-24 datasetu
+AVAILABLE_FRAMES = [50, 150, 250, 350, 420, 508]
 
 # ============================================================================
 # POMOCNE FUNKCIJE
 # ============================================================================
 
 def load_biwi_pose_txt(path: str) -> Tuple[np.ndarray, np.ndarray]:
-    """Učitava BIWI pose datoteku."""
+    """Učitava BIWI pose datoteku (rotacija i translacija)."""
     data = np.loadtxt(path)
 
     if data.shape == (4, 3):
@@ -37,22 +40,22 @@ def load_biwi_pose_txt(path: str) -> Tuple[np.ndarray, np.ndarray]:
         R = data
         T_mm = np.zeros(3)
     else:
-        raise ValueError(f"Neočekivan oblik: {data.shape}")
+        raise ValueError(f"Neočekivan oblik pose datoteke: {data.shape}")
 
-    return R.astype(np.float32), T_mm.astype(np.float32) / 1000.0
+    return R.astype(np.float32), T_mm.astype(np.float32) / 1000.0  # T u metre
 
 
 def rotmat_to_euler_xyz(R: np.ndarray) -> np.ndarray:
-    """Pretvara rotacijsku matricu u Euler kutove."""
+    """Pretvara rotacijsku matricu u Euler kutove (XYZ redoslijed)."""
     assert R.shape == (3, 3)
 
     sy = math.sqrt(R[0, 0]**2 + R[1, 0]**2)
     singular = sy < 1e-6
 
     if not singular:
-        pitch = math.atan2(R[2, 1], R[2, 2])
-        yaw   = math.atan2(-R[2, 0], sy)
-        roll  = math.atan2(R[1, 0], R[0, 0])
+        pitch = math.atan2(R[2, 1], R[2, 2])   # oko X
+        yaw   = math.atan2(-R[2, 0], sy)       # oko Y
+        roll  = math.atan2(R[1, 0], R[0, 0])   # oko Z
     else:
         pitch = math.atan2(-R[1, 2], R[1, 1])
         yaw   = math.atan2(-R[2, 0], sy)
@@ -61,258 +64,210 @@ def rotmat_to_euler_xyz(R: np.ndarray) -> np.ndarray:
     return np.degrees(np.array([pitch, yaw, roll]))
 
 
-def angle_difference(angle1: float, angle2: float) -> float:
-    """Računaa najkraću razliku između dva kuta (u stupnjima)."""
-    diff = abs(angle1 - angle2)
-    # Ako je razlika veća od 180, uzmi komplementarnu razliku
-    if diff > 180:
-        diff = 360 - diff
-    return diff
-
-
-def rotation_error(R1: np.ndarray, R2: np.ndarray) -> float:
-    """Računaa rotacijsku grešku između dvije rotacijske matrice (u stupnjima)."""
-    # Koristi trace za izračun
-    try:
-        R_diff = R1.T @ R2
-        trace = np.trace(R_diff)
-        # Ograniči na [-1, 1]
-        trace = np.clip(trace, -1.0, 1.0)
-        angle = math.acos((trace - 1) / 2.0)
-        return math.degrees(angle)
-    except:
-        return np.nan
-
-
-def translation_error(T1: np.ndarray, T2: np.ndarray) -> float:
-    """Računaa Euklidsku grešku između dvije translacije (u mm)."""
-    return np.linalg.norm(T1 * 1000 - T2 * 1000)  # u mm
-
-
 # ============================================================================
 # ANALIZA
 # ============================================================================
 
-class StatisticalAnalyzer:
-    """Klasa za statističku analizu Zadatka 1."""
+class StatisticsAnalyzer:
+    """Klasa za statističku analizu Ground Truth podataka."""
 
     def __init__(self, data_root: Path):
         self.data_root = Path(data_root)
-        self.results = []
-        self.euler_errors = []  # Euler kutne greške
-        self.translation_errors = []  # Translacijske greške
-        self.rotation_errors = []  # Rotacijske matrice greške
+        self.euler_angles = []  # Lista Euler kutova: [pitch, yaw, roll]
+        self.translations = []  # Lista translacija: [x, y, z] u metrima
+        self.frame_ids = []     # Liste frame ID-eva koji su uspješno učitani
+        self.results = {}
 
-    def analyze_frame(self, frame_id: int) -> Dict:
-        """Analizira jedan frame."""
+    def load_frame_data(self, frame_id: int) -> Tuple[bool, Dict]:
+        """Učitava podatke za jedan frame."""
         result = {
             'frame_id': frame_id,
-            'status': 'success',
-            'euler_gt': None,
-            'translation_gt': None,
-            'analysis': {}
+            'loaded': False,
+            'euler': None,
+            'translation': None,
+            'error': None
         }
+
+        pose_path = self.data_root / f"frame_{frame_id:05d}_pose.txt"
+        
+        if not pose_path.exists():
+            result['error'] = f"Datoteka ne postoji: {pose_path.name}"
+            return False, result
 
         try:
-            pose_path = self.data_root / f"frame_{frame_id:05d}_pose.txt"
-            if not pose_path.exists():
-                result['status'] = 'no_pose'
-                return result
+            R, T = load_biwi_pose_txt(str(pose_path))
+            euler = rotmat_to_euler_xyz(R)
 
-            R_gt, T_gt = load_biwi_pose_txt(str(pose_path))
-            euler_gt = rotmat_to_euler_xyz(R_gt)
+            result['loaded'] = True
+            result['euler'] = euler.tolist()
+            result['translation'] = T.tolist()
 
-            result['euler_gt'] = {
-                'pitch': float(euler_gt[0]),
-                'yaw': float(euler_gt[1]),
-                'roll': float(euler_gt[2])
-            }
+            self.euler_angles.append(euler)
+            self.translations.append(T)
+            self.frame_ids.append(frame_id)
 
-            result['translation_gt'] = {
-                'x': float(T_gt[0]),
-                'y': float(T_gt[1]),
-                'z': float(T_gt[2])
-            }
-
-            # Spremi greške ako čemo ih uspoređivati
-            self.euler_errors.append(euler_gt)
-            self.translation_errors.append(T_gt)
-            self.rotation_errors.append(R_gt)
-
+            return True, result
         except Exception as e:
-            result['status'] = 'error'
             result['error'] = str(e)
+            return False, result
 
-        return result
-
-    def analyze_range(self, frame_start: int, frame_end: int) -> None:
-        """Analizira raspon framea."""
+    def load_frames_list(self, frame_list: List[int]) -> None:
+        """Učitava podatke za listu framea."""
         print(f"\n{'='*70}")
-        print(f"STATISTIČKA ANALIZA - Zadatak 1")
+        print(f"Statistička analiza - Ground Truth podataka")
         print(f"{'='*70}")
-        print(f"Data folder: {self.data_root}\n")
-        print(f"Analiza framea {frame_start} do {frame_end}...\n")
+        print(f"\nData folder: {self.data_root}")
+        print(f"Dostupni framea: {sorted(frame_list)}")
+        print(f"Učitavanje podataka...\n")
 
-        for frame_id in range(frame_start, frame_end + 1):
-            result = self.analyze_frame(frame_id)
-            self.results.append(result)
-
-            if result['status'] == 'success':
-                euler = result['euler_gt']
-                print(f"[{frame_id:05d}] Pitch={euler['pitch']:7.2f}° "
-                      f"Yaw={euler['yaw']:7.2f}° Roll={euler['roll']:7.2f}°")
+        for frame_id in sorted(frame_list):
+            success, result = self.load_frame_data(frame_id)
+            status = "OK" if success else "FAIL"
+            print(f"[Frame {frame_id:05d}] {status}", end="")
+            if not success:
+                print(f" - {result['error']}")
             else:
-                print(f"[{frame_id:05d}] Status: {result['status']}")
+                print()
 
     def compute_statistics(self) -> Dict:
-        """Izračunava statističke mjere."""
-        if len(self.euler_errors) == 0:
-            return {'error': 'Nema dostupnih podataka'}
+        """Računa statističke mjere."""
+        if len(self.euler_angles) == 0:
+            print("\n⚠️ Nema učitanih podataka za analizu!\n")
+            return {}
 
-        euler_array = np.array(self.euler_errors)
-        translation_array = np.array(self.translation_errors)
+        euler_array = np.array(self.euler_angles)  # Shape: (N, 3)
+        trans_array = np.array(self.translations)  # Shape: (N, 3)
 
         stats = {
-            'frame_count': len(self.euler_errors),
-            'data_folder': str(self.data_root),
-            'euler': {
+            'total_frames': len(self.frame_ids),
+            'frame_ids': self.frame_ids,
+            'euler_angles': {
                 'pitch': {
-                    'mean': float(np.mean(euler_array[:, 0])),
-                    'std': float(np.std(euler_array[:, 0])),
-                    'min': float(np.min(euler_array[:, 0])),
-                    'max': float(np.max(euler_array[:, 0]))
+                    'mean': float(euler_array[:, 0].mean()),
+                    'std': float(euler_array[:, 0].std()),
+                    'min': float(euler_array[:, 0].min()),
+                    'max': float(euler_array[:, 0].max()),
+                    'range': float(euler_array[:, 0].max() - euler_array[:, 0].min())
                 },
                 'yaw': {
-                    'mean': float(np.mean(euler_array[:, 1])),
-                    'std': float(np.std(euler_array[:, 1])),
-                    'min': float(np.min(euler_array[:, 1])),
-                    'max': float(np.max(euler_array[:, 1]))
+                    'mean': float(euler_array[:, 1].mean()),
+                    'std': float(euler_array[:, 1].std()),
+                    'min': float(euler_array[:, 1].min()),
+                    'max': float(euler_array[:, 1].max()),
+                    'range': float(euler_array[:, 1].max() - euler_array[:, 1].min())
                 },
                 'roll': {
-                    'mean': float(np.mean(euler_array[:, 2])),
-                    'std': float(np.std(euler_array[:, 2])),
-                    'min': float(np.min(euler_array[:, 2])),
-                    'max': float(np.max(euler_array[:, 2]))
+                    'mean': float(euler_array[:, 2].mean()),
+                    'std': float(euler_array[:, 2].std()),
+                    'min': float(euler_array[:, 2].min()),
+                    'max': float(euler_array[:, 2].max()),
+                    'range': float(euler_array[:, 2].max() - euler_array[:, 2].min())
                 }
             },
-            'translation_m': {
+            'translation': {
                 'x': {
-                    'mean': float(np.mean(translation_array[:, 0])),
-                    'std': float(np.std(translation_array[:, 0])),
-                    'min': float(np.min(translation_array[:, 0])),
-                    'max': float(np.max(translation_array[:, 0]))
+                    'mean': float(trans_array[:, 0].mean()),
+                    'std': float(trans_array[:, 0].std()),
+                    'min': float(trans_array[:, 0].min()),
+                    'max': float(trans_array[:, 0].max()),
+                    'range': float(trans_array[:, 0].max() - trans_array[:, 0].min())
                 },
                 'y': {
-                    'mean': float(np.mean(translation_array[:, 1])),
-                    'std': float(np.std(translation_array[:, 1])),
-                    'min': float(np.min(translation_array[:, 1])),
-                    'max': float(np.max(translation_array[:, 1]))
+                    'mean': float(trans_array[:, 1].mean()),
+                    'std': float(trans_array[:, 1].std()),
+                    'min': float(trans_array[:, 1].min()),
+                    'max': float(trans_array[:, 1].max()),
+                    'range': float(trans_array[:, 1].max() - trans_array[:, 1].min())
                 },
                 'z': {
-                    'mean': float(np.mean(translation_array[:, 2])),
-                    'std': float(np.std(translation_array[:, 2])),
-                    'min': float(np.min(translation_array[:, 2])),
-                    'max': float(np.max(translation_array[:, 2]))
+                    'mean': float(trans_array[:, 2].mean()),
+                    'std': float(trans_array[:, 2].std()),
+                    'min': float(trans_array[:, 2].min()),
+                    'max': float(trans_array[:, 2].max()),
+                    'range': float(trans_array[:, 2].max() - trans_array[:, 2].min())
                 }
             }
         }
 
+        self.results = stats
         return stats
 
     def print_statistics(self) -> None:
-        """Ispisuje statističke rezultate."""
-        if len(self.euler_errors) == 0:
-            print("\n⚠️  Nema dostupnih podataka za analizu.")
+        """Ispisuje statističku analizu na konzolu."""
+        if not self.results:
             return
 
-        stats = self.compute_statistics()
-
         print(f"\n{'='*70}")
-        print("STATISTIKA - EULER KUTOVI (°)")
-        print(f"{'='*70}\n")
-
-        for angle_name in ['pitch', 'yaw', 'roll']:
-            angle_stats = stats['euler'][angle_name]
-            print(f"{angle_name.upper():6}:")
-            print(f"  Mean:  {angle_stats['mean']:7.2f}°")
-            print(f"  Std:   {angle_stats['std']:7.2f}°")
-            print(f"  Min:   {angle_stats['min']:7.2f}°")
-            print(f"  Max:   {angle_stats['max']:7.2f}°")
-            print()
-
+        print("REZULTATI - Statistička analiza Ground Truth podataka")
         print(f"{'='*70}")
-        print("STATISTIKA - TRANSLACIJA (m)")
-        print(f"{'='*70}\n")
+
+        print(f"\nUkupno procesiranih framea: {self.results['total_frames']}")
+        print(f"Frame ID-evi: {self.results['frame_ids']}")
+
+        print(f"\n{'EULER KUTOVI (stepeni)':^70}")
+        print("-" * 70)
+        print(f"{'Osovina':<10} {'Mean':>12} {'Std':>12} {'Min':>12} {'Max':>12} {'Range':>12}")
+        print("-" * 70)
+
+        for axis in ['pitch', 'yaw', 'roll']:
+            data = self.results['euler_angles'][axis]
+            print(f"{axis:<10} "
+                  f"{data['mean']:>12.2f} "
+                  f"{data['std']:>12.2f} "
+                  f"{data['min']:>12.2f} "
+                  f"{data['max']:>12.2f} "
+                  f"{data['range']:>12.2f}")
+
+        print(f"\n{'TRANSLACIJA (metri)':^70}")
+        print("-" * 70)
+        print(f"{'Osovina':<10} {'Mean':>12} {'Std':>12} {'Min':>12} {'Max':>12} {'Range':>12}")
+        print("-" * 70)
 
         for axis in ['x', 'y', 'z']:
-            axis_stats = stats['translation_m'][axis]
-            print(f"{axis.upper():1} os:")
-            print(f"  Mean:  {axis_stats['mean']:7.3f} m")
-            print(f"  Std:   {axis_stats['std']:7.3f} m")
-            print(f"  Min:   {axis_stats['min']:7.3f} m")
-            print(f"  Max:   {axis_stats['max']:7.3f} m")
-            print()
+            data = self.results['translation'][axis]
+            print(f"{axis:<10} "
+                  f"{data['mean']:>12.4f} "
+                  f"{data['std']:>12.4f} "
+                  f"{data['min']:>12.4f} "
+                  f"{data['max']:>12.4f} "
+                  f"{data['range']:>12.4f}")
 
-        print(f"{'='*70}\n")
+        print(f"\n{'='*70}\n")
 
-    def save_statistics(self, output_path: Path) -> None:
-        """Sprema statistiku u JSON datoteku."""
+    def save_to_json(self, output_path: Path) -> None:
+        """Sprema statističku analizu u JSON datoteku."""
         output_path = Path(output_path)
         output_path.parent.mkdir(parents=True, exist_ok=True)
 
-        stats = self.compute_statistics()
-
         with open(output_path, 'w', encoding='utf-8') as f:
-            json.dump(stats, f, indent=2, ensure_ascii=False)
+            json.dump(self.results, f, indent=2, ensure_ascii=False)
 
-        print(f"✓ Statistika spremljena u: {output_path}")
+        print(f"Statistika spremljena u: {output_path}")
 
-    def plot_distributions(self, output_dir: Path = None) -> None:
-        """Crta grafike distribucija kutova."""
-        if not HAS_MATPLOTLIB:
-            print("⚠️  Matplotlib nije dostupan. Preskačem grafike.")
+    def create_visualization_data(self) -> None:
+        """Priprema podatke za vizualizaciju."""
+        if len(self.euler_angles) == 0:
+            print("Nema podataka za vizualizaciju")
             return
 
-        if len(self.euler_errors) < 2:
-            print("⚠️  Nema dovoljno podataka za grafike.")
-            return
+        print(f"\n{'='*70}")
+        print("SUMARNI IZVJEŠTAJ")
+        print(f"{'='*70}\n")
 
-        euler_array = np.array(self.euler_errors)
+        euler_array = np.array(self.euler_angles)
+        trans_array = np.array(self.translations)
 
-        fig, axes = plt.subplots(1, 3, figsize=(15, 4))
-        fig.suptitle('Distribucija Euler Kutova - Ground Truth (HPE-24)', fontsize=14, fontweight='bold')
+        print(f"Distribucija Euler kutova:")
+        print(f"  Pitch (X): {euler_array[:, 0].min():.2f}° do {euler_array[:, 0].max():.2f}° (raspon: {euler_array[:, 0].max() - euler_array[:, 0].min():.2f}°)")
+        print(f"  Yaw (Y):   {euler_array[:, 1].min():.2f}° do {euler_array[:, 1].max():.2f}° (raspon: {euler_array[:, 1].max() - euler_array[:, 1].min():.2f}°)")
+        print(f"  Roll (Z):  {euler_array[:, 2].min():.2f}° do {euler_array[:, 2].max():.2f}° (raspon: {euler_array[:, 2].max() - euler_array[:, 2].min():.2f}°)")
 
-        angle_names = ['Pitch (X)', 'Yaw (Y)', 'Roll (Z)']
-        colors = ['red', 'green', 'blue']
+        print(f"\nDistribucija translacije:")
+        print(f"  X: {trans_array[:, 0].min():.4f}m do {trans_array[:, 0].max():.4f}m (raspon: {trans_array[:, 0].max() - trans_array[:, 0].min():.4f}m)")
+        print(f"  Y: {trans_array[:, 1].min():.4f}m do {trans_array[:, 1].max():.4f}m (raspon: {trans_array[:, 1].max() - trans_array[:, 1].min():.4f}m)")
+        print(f"  Z: {trans_array[:, 2].min():.4f}m do {trans_array[:, 2].max():.4f}m (raspon: {trans_array[:, 2].max() - trans_array[:, 2].min():.4f}m)")
 
-        for i, (ax, angle_name, color) in enumerate(zip(axes, angle_names, colors)):
-            data = euler_array[:, i]
-            ax.hist(data, bins=10, color=color, alpha=0.7, edgecolor='black')
-            ax.set_title(angle_name)
-            ax.set_xlabel('Kut (°)')
-            ax.set_ylabel('Frekvencija')
-            ax.grid(True, alpha=0.3)
-            
-            # Dodaj statističke linije
-            mean = np.mean(data)
-            std = np.std(data)
-            ax.axvline(mean, color='black', linestyle='--', linewidth=2, label=f'Mean: {mean:.1f}°')
-            ax.axvline(mean + std, color='gray', linestyle=':', linewidth=1, label=f'±Std')
-            ax.axvline(mean - std, color='gray', linestyle=':', linewidth=1)
-            ax.legend()
-
-        plt.tight_layout()
-
-        if output_dir:
-            output_dir = Path(output_dir)
-            output_dir.mkdir(parents=True, exist_ok=True)
-            output_path = output_dir / "euler_distributions.png"
-            plt.savefig(str(output_path), dpi=150, bbox_inches='tight')
-            print(f"✓ Grafik spreman: {output_path}")
-        else:
-            plt.show()
-
-        plt.close()
+        print(f"\n{'='*70}\n")
 
 
 # ============================================================================
@@ -320,37 +275,31 @@ class StatisticalAnalyzer:
 # ============================================================================
 
 if __name__ == "__main__":
-    print("\n" + "="*70)
-    print("TASK 1 - Statistička analiza Ground Truth podataka")
-    print("="*70)
-
     # Koristi data folder HPE-24
     data_root = Path("./student-assingment-03/data/raw/hpe/24")
 
     if not data_root.exists():
         print(f"\n⚠️  Putanja ne postoji: {data_root}")
-        print("Prilagodi putanju prema svojoj strukturi.\n")
+        print("Prilagodi putanju prema svojoj strukturi direktorija.\n")
         exit(1)
 
-    # Kreiraj analizator
-    analyzer = StatisticalAnalyzer(data_root)
+    # Kreiraj analyzer
+    analyzer = StatisticsAnalyzer(data_root)
 
-    # Analiza raspon framea
-    frame_start = 100
-    frame_end = 120
+    # Učitaj podatke za sve dostupne framee
+    analyzer.load_frames_list(AVAILABLE_FRAMES)
 
-    analyzer.analyze_range(frame_start, frame_end)
+    # Računa statističke mjere
+    analyzer.compute_statistics()
 
-    # Ispiši statistiku
+    # Ispiši rezultate
     analyzer.print_statistics()
 
-    # Spremi rezultate
+    # Spremi statistiku u JSON
     output_json = Path("./results/task_1_statistics.json")
-    analyzer.save_statistics(output_json)
+    analyzer.save_to_json(output_json)
 
-    # Crta grafike
-    if HAS_MATPLOTLIB:
-        output_dir = Path("./results")
-        analyzer.plot_distributions(output_dir)
+    # Kreiraj sumarni izvještaj
+    analyzer.create_visualization_data()
 
-    print("\n✓ Analiza je završena!\n")
+    print("✓ Statistička analiza je završena!")
