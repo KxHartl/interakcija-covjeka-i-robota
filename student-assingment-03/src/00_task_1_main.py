@@ -6,6 +6,8 @@ Zadatak 1: Usporedba Ground Truth podataka i MediaPipe predikcija
 Ovaj skript učitava ground truth podatke o poziciji i rotaciji glave,
 uspoređuje ih sa MediaPipe predikcijama i analizira točnost detektiranja.
 
+Dataset: HPE-24 sa frameima 50, 150, 250, 350, 420, 508
+
 Autor: Student
 Datum: 2025
 """
@@ -14,7 +16,7 @@ import numpy as np
 import cv2
 import mediapipe as mp
 from pathlib import Path
-from typing import Tuple, Dict
+from typing import Tuple, Dict, List
 import json
 from datetime import datetime
 
@@ -29,38 +31,12 @@ K = np.array([
     [0.0, 0.0, 1.0]
 ], dtype=np.float32)
 
+# Dostupni framea u HPE-24 datasetu
+AVAILABLE_FRAMES = [50, 150, 250, 350, 420, 508]
+
 # ============================================================================
-# POMOĆNE FUNKCIJE
+# POMOČNE FUNKCIJE
 # ============================================================================
-
-def decode_biwi_depth(filepath: str) -> np.ndarray:
-    """Dekodira BIWI binary depth datoteku."""
-    with open(filepath, 'rb') as f:
-        width = int.from_bytes(f.read(4), 'little')
-        height = int.from_bytes(f.read(4), 'little')
-
-        depth = np.zeros([width * height], dtype=np.uint16)
-        i = 0
-
-        while i < width * height:
-            skip = int.from_bytes(f.read(4), 'little')
-            read = int.from_bytes(f.read(4), 'little')
-
-            for _ in range(read):
-                depth[i + skip] = int.from_bytes(f.read(2), 'little')
-                i += 1
-
-            i += skip
-
-    depth = depth.reshape((height, width))
-
-    # Dodaj border i resize na 640x480 (BIWI specifično)
-    d_ = np.zeros((depth.shape[0] + 20, depth.shape[1] + 20), dtype=np.uint16)
-    d_[20:, :640] = depth
-    depth = cv2.resize(d_, (640, 480), interpolation=cv2.INTER_NEAREST)
-
-    return depth
-
 
 def load_biwi_pose_txt(path: str) -> Tuple[np.ndarray, np.ndarray]:
     """Učitava BIWI pose datoteku (rotacija i translacija)."""
@@ -106,41 +82,6 @@ def project_point(P: np.ndarray, K_mat: np.ndarray = K) -> Tuple[int, int]:
     u = p[0] / p[2]
     v = p[1] / p[2]
     return int(round(u)), int(round(v))
-
-
-def draw_axes_perspective(img: np.ndarray, R: np.ndarray, T_m: np.ndarray, 
-                         axis_len_m: float = 0.2) -> np.ndarray:
-    """Crta 3D koordinatne osi na slici."""
-    img_copy = img.copy()
-    T_mm = T_m * 1000.0  # konvertiraj u mm
-    axis_len_mm = axis_len_m * 1000.0
-
-    # Ishodište (glava)
-    P0 = T_mm
-
-    # Lokalne osi glave
-    x_axis = R[:, 0]
-    y_axis = R[:, 1]
-    z_axis = R[:, 2]
-
-    # Krajnje točke osi
-    PX = T_mm + axis_len_mm * x_axis
-    PY = T_mm + axis_len_mm * y_axis
-    PZ = T_mm + axis_len_mm * z_axis
-
-    # Projektiraj u 2D
-    u0, v0 = project_point(P0)
-    ux, vx = project_point(PX)
-    uy, vy = project_point(PY)
-    uz, vz = project_point(PZ)
-
-    # Nacrtaj
-    cv2.circle(img_copy, (u0, v0), 4, (0, 255, 255), -1)  # Žuta točka u ishodištu
-    cv2.line(img_copy, (u0, v0), (ux, vx), (0, 0, 255), 2)   # X – crvena
-    cv2.line(img_copy, (u0, v0), (uy, vy), (0, 255, 0), 2)   # Y – zelena
-    cv2.line(img_copy, (u0, v0), (uz, vz), (255, 0, 0), 2)   # Z – plava
-
-    return img_copy
 
 
 def extract_mediapipe_head_pose(image_rgb: np.ndarray) -> Dict:
@@ -211,13 +152,13 @@ class Task1Analyzer:
             rgb_path = self.data_root / f"frame_{frame_id:05d}_rgb.png"
             if not rgb_path.exists():
                 result['status'] = 'file_not_found'
-                result['error'] = f"RGB datoteka ne postoji: {rgb_path}"
+                result['error'] = f"RGB datoteka ne postoji: {rgb_path.name}"
                 return result
 
             image_bgr = cv2.imread(str(rgb_path))
             if image_bgr is None:
                 result['status'] = 'failed_to_load'
-                result['error'] = f"Ne mogu učitati sliku: {rgb_path}"
+                result['error'] = f"Ne mogu učitati sliku: {rgb_path.name}"
                 return result
 
             image_rgb = cv2.cvtColor(image_bgr, cv2.COLOR_BGR2RGB)
@@ -264,15 +205,16 @@ class Task1Analyzer:
 
         return result
 
-    def process_range(self, frame_start: int, frame_end: int) -> None:
-        """Procesira raspon framea."""
+    def process_frames_list(self, frame_list: List[int]) -> None:
+        """Procesira listu framea."""
         print(f"\n{'='*70}")
         print(f"Analiza Zadatka 1: Ground Truth vs MediaPipe")
         print(f"{'='*70}")
         print(f"\nData folder: {self.data_root}")
-        print(f"Processiranje framea {frame_start} do {frame_end}...\n")
+        print(f"Dostupni framea: {sorted(frame_list)}")
+        print(f"Processiranje {len(frame_list)} framea...\n")
 
-        for frame_id in range(frame_start, frame_end + 1):
+        for frame_id in sorted(frame_list):
             result = self.process_frame(frame_id)
             self.results.append(result)
 
@@ -302,6 +244,7 @@ class Task1Analyzer:
                 'timestamp': datetime.now().isoformat(),
                 'total_frames': len(self.results),
                 'data_folder': str(self.data_root),
+                'available_frames': AVAILABLE_FRAMES,
                 'results': json_results
             }, f, indent=2, ensure_ascii=False)
 
@@ -341,7 +284,7 @@ class Task1Analyzer:
 
 if __name__ == "__main__":
     # Koristi data folder HPE-24
-    data_root = Path("../data/raw/hpe/24")
+    data_root = Path("./student-assingment-03/data/raw/hpe/24")
     
     # Ako putanja ne postoji, ispiši upozorenje
     if not data_root.exists():
@@ -354,12 +297,9 @@ if __name__ == "__main__":
     # Kreiraj analizator
     analyzer = Task1Analyzer(data_root)
 
-    # Procesiraj frame raspon
-    # Prilagodi raspon prema dostupnim frameima
-    frame_start = 100
-    frame_end = 120  # Procesiraj framee 100-120
-
-    analyzer.process_range(frame_start, frame_end)
+    # Procesiraj dostupne framee iz HPE-24 dataseta
+    # Dostupni framea: 50, 150, 250, 350, 420, 508
+    analyzer.process_frames_list(AVAILABLE_FRAMES)
     analyzer.print_summary()
 
     # Spremi rezultate
