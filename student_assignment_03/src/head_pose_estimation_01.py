@@ -3,13 +3,12 @@
 Task 1: Visual interpretation of BIWI Head Pose data
 Author: Krešimir Hartl (Student 24)
 
-For 3 RGB images from BIWI dataset:
-1. Load RGB image and rotation/translation information
-2. Calculate Euler angles (XYZ convention)
-3. Draw head axes on the image with coordinate system
-4. Visualize gaze direction and head tilt
-5. Describe where the person is looking
-6. Compare results in a table
+Integrated features from src/hpe utilities:
+1. Depth data decoding and visualization (01_depth_info.py)
+2. Position and rotation loading (02_pos_rot_info.py)
+3. 3D perspective axes visualization (03_vis_pos_rot_info.py)
+4. Face mesh landmarks from MediaPipe (04_face_mesh.py)
+5. Enhanced Euler angle visualization and roll gauge
 """
 
 import numpy as np
@@ -18,16 +17,61 @@ import math
 from pathlib import Path
 from typing import Tuple, List, Dict
 import pandas as pd
+import mediapipe as mp
 
 # Camera intrinsics for BIWI dataset (Kinect)
 K = np.array([[575.816, 0.0, 320.0],
               [0.0, 575.816, 240.0],
               [0.0, 0.0, 1.0]], dtype=np.float32)
 
+# MediaPipe FaceMesh initialization
+mp_face_mesh = mp.solutions.face_mesh
+face_mesh = mp_face_mesh.FaceMesh(
+    static_image_mode=True,
+    max_num_faces=1,
+    refine_landmarks=True,
+    min_detection_confidence=0.5
+)
+
+# ============================================================================
+# UTILITY FUNCTIONS FROM src/hpe
+# ============================================================================
+
+def decode_biwi_depth(filepath: str) -> np.ndarray:
+    """
+    Decode BIWI depth binary format (from 01_depth_info.py)
+    Returns depth in millimetres as uint16
+    """
+    with open(filepath, 'rb') as f:
+        width = int.from_bytes(f.read(4), 'little')
+        height = int.from_bytes(f.read(4), 'little')
+
+        depth = np.zeros([width * height], dtype=np.uint16)
+        i = 0
+
+        while i < width * height:
+            skip = int.from_bytes(f.read(4), 'little')
+            read = int.from_bytes(f.read(4), 'little')
+
+            for _ in range(read):
+                depth[i + skip] = int.from_bytes(f.read(2), 'little')
+                i += 1
+
+            i += skip
+
+    depth = depth.reshape((height, width))
+
+    # Add border and resize to 640x480 (BIWI specific)
+    d_ = np.zeros((depth.shape[0] + 20, depth.shape[1] + 20), dtype=np.uint16)
+    d_[20:, :640] = depth
+    depth = cv2.resize(d_, (640, 480), interpolation=cv2.INTER_NEAREST)
+
+    return depth
+
 
 def load_biwi_pose_txt(path: str) -> Tuple[np.ndarray, np.ndarray]:
     """
-    Load rotation matrix and translation from BIWI pose.txt file.
+    Load rotation matrix and translation from BIWI pose.txt file (from 02_pos_rot_info.py).
     
     Returns:
         R: 3x3 rotation matrix
@@ -47,7 +91,7 @@ def load_biwi_pose_txt(path: str) -> Tuple[np.ndarray, np.ndarray]:
 
 def rotmat_to_euler_xyz(R: np.ndarray) -> np.ndarray:
     """
-    Convert rotation matrix to Euler angles (pitch, yaw, roll).
+    Convert rotation matrix to Euler angles (pitch, yaw, roll) (from 02_pos_rot_info.py).
     Convention: XYZ rotations, angles in degrees
     
     pitch = rotation around X axis (up/down gaze)
@@ -76,7 +120,7 @@ def rotmat_to_euler_xyz(R: np.ndarray) -> np.ndarray:
 
 def project_point(P: np.ndarray) -> Tuple[int, int]:
     """
-    Project 3D point in camera space to 2D image coordinates.
+    Project 3D point in camera space to 2D image coordinates (from 03_vis_pos_rot_info.py).
     Uses camera intrinsics matrix K.
     """
     p = K @ P
@@ -85,10 +129,33 @@ def project_point(P: np.ndarray) -> Tuple[int, int]:
     return int(round(u)), int(round(v))
 
 
+def get_face_landmarks(img: np.ndarray) -> List[Tuple[int, int]]:
+    """
+    Extract 468 face landmarks using MediaPipe FaceMesh (from 04_face_mesh.py)
+    """
+    image_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+    results = face_mesh.process(image_rgb)
+    
+    landmarks = []
+    if results.multi_face_landmarks:
+        h, w, _ = img.shape
+        for face in results.multi_face_landmarks:
+            for lm in face.landmark:
+                x = int(lm.x * w)
+                y = int(lm.y * h)
+                landmarks.append((x, y))
+    
+    return landmarks
+
+
+# ============================================================================
+# VISUALIZATION FUNCTIONS
+# ============================================================================
+
 def draw_axes_on_image(img: np.ndarray, R: np.ndarray, T_mm: np.ndarray,
                        axis_len_mm: float = 200.0) -> np.ndarray:
     """
-    Draw 3D coordinate axes on the image based on head pose.
+    Draw 3D coordinate axes on the image based on head pose (from 03_vis_pos_rot_info.py + enhancements).
     
     X-axis: red (lateral/right)
     Y-axis: green (vertical/up)
@@ -184,7 +251,7 @@ def draw_axes_on_image(img: np.ndarray, R: np.ndarray, T_mm: np.ndarray,
 
 def add_euler_visualization(img: np.ndarray, pitch: float, yaw: float, roll: float) -> np.ndarray:
     """
-    Add visual indicators for Euler angles and gaze direction.
+    Add visual indicators for Euler angles and gaze direction with roll gauge.
     """
     h, w = img.shape[:2]
     img_viz = img.copy()
@@ -251,14 +318,47 @@ def add_euler_visualization(img: np.ndarray, pitch: float, yaw: float, roll: flo
     return img_viz
 
 
+def draw_face_mesh(img: np.ndarray) -> np.ndarray:
+    """
+    Draw 468 face mesh landmarks using MediaPipe (from 04_face_mesh.py)
+    """
+    landmarks = get_face_landmarks(img)
+    img_mesh = img.copy()
+    
+    # Draw all landmarks
+    for (x, y) in landmarks:
+        cv2.circle(img_mesh, (x, y), 1, (0, 255, 0), -1)
+    
+    # Add label
+    cv2.putText(img_mesh, f'Face Landmarks: {len(landmarks)}', (10, 30),
+                cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
+    
+    return img_mesh
+
+
+def visualize_depth_map(depth_mm: np.ndarray) -> np.ndarray:
+    """
+    Visualize depth map with proper normalization (from 01_depth_info.py)
+    """
+    depth_m = depth_mm.astype(np.float32) / 1000.0
+    valid = depth_m[depth_m > 0]
+    
+    if valid.size > 0:
+        # Normalize depth for visualization
+        depth_vis = cv2.normalize(depth_m, None, 0, 255, cv2.NORM_MINMAX)
+        depth_vis = depth_vis.astype(np.uint8)
+        
+        # Apply colormap for better visualization
+        depth_color = cv2.applyColorMap(depth_vis, cv2.COLORMAP_JET)
+        return depth_color
+    else:
+        # Return black image if no valid depth data
+        return np.zeros_like(depth_mm, dtype=np.uint8)
+
+
 def describe_gaze_direction(pitch: float, yaw: float, roll: float) -> str:
     """
     Generate description of where person is looking based on Euler angles.
-    
-    Thresholds:
-    - pitch < -10°: looking down, pitch > 10°: looking up
-    - yaw < -10°: looking left, yaw > 10°: looking right
-    - roll < -10°: head tilted left, roll > 10°: head tilted right
     """
     descriptions = []
     
@@ -291,7 +391,7 @@ def describe_gaze_direction(pitch: float, yaw: float, roll: float) -> str:
 
 def process_frame(frame_num: int, data_root: Path, show_images: bool = False) -> Dict:
     """
-    Process a single frame: load image and pose, calculate angles, visualize.
+    Process a single frame: load image, depth, and pose data, calculate angles, visualize.
     
     Args:
         frame_num: Frame number to process
@@ -300,18 +400,32 @@ def process_frame(frame_num: int, data_root: Path, show_images: bool = False) ->
     """
     rgb_path = data_root / f"frame_{frame_num:05d}_rgb.png"
     pose_path = data_root / f"frame_{frame_num:05d}_pose.txt"
+    depth_path = data_root / f"frame_{frame_num:05d}_depth.bin"
     
     # Check files exist
     if not rgb_path.exists() or not pose_path.exists():
         raise FileNotFoundError(f"Files not found for frame {frame_num}")
     
-    # Load data
+    # Load RGB data
     img = cv2.imread(str(rgb_path))
     if img is None:
         raise ValueError(f"Could not load image: {rgb_path}")
     
+    # Load pose data
     R, T_m = load_biwi_pose_txt(str(pose_path))
     T_mm = T_m * 1000.0  # convert back to mm for visualization
+    
+    # Load depth data if available
+    depth_mm = None
+    depth_info = "N/A"
+    if depth_path.exists():
+        try:
+            depth_mm = decode_biwi_depth(str(depth_path))
+            valid_depths = depth_mm[depth_mm > 0]
+            if valid_depths.size > 0:
+                depth_info = f"{valid_depths.min()} - {valid_depths.max()} mm"
+        except Exception as e:
+            print(f"  Warning: Could not load depth data: {e}")
     
     # Calculate Euler angles
     pitch, yaw, roll = rotmat_to_euler_xyz(R)
@@ -325,15 +439,31 @@ def process_frame(frame_num: int, data_root: Path, show_images: bool = False) ->
     # Add Euler angle visualization
     img_with_viz = add_euler_visualization(img_with_axes, pitch, yaw, roll)
     
+    # Add face mesh landmarks
+    img_with_mesh = draw_face_mesh(img_with_viz)
+    
     # Save result
     output_path = data_root.parent.parent.parent / f"outputs/frame_{frame_num:05d}_with_axes.png"
     output_path.parent.mkdir(parents=True, exist_ok=True)
-    cv2.imwrite(str(output_path), img_with_viz)
+    cv2.imwrite(str(output_path), img_with_mesh)
     print(f"  Pohrana: {output_path}")
+    
+    # Save depth visualization if available
+    if depth_mm is not None:
+        try:
+            depth_viz = visualize_depth_map(depth_mm)
+            depth_output = data_root.parent.parent.parent / f"outputs/frame_{frame_num:05d}_depth.png"
+            cv2.imwrite(str(depth_output), depth_viz)
+            print(f"  Pohrana depth: {depth_output}")
+        except Exception as e:
+            print(f"  Warning: Could not save depth visualization: {e}")
     
     # Display image if requested
     if show_images:
-        cv2.imshow(f"Frame {frame_num}: {gaze_desc}", img_with_viz)
+        cv2.imshow(f"Frame {frame_num}: {gaze_desc}", img_with_mesh)
+        if depth_mm is not None:
+            depth_viz = visualize_depth_map(depth_mm)
+            cv2.imshow(f"Frame {frame_num} - Depth", depth_viz)
         print(f"  Pritisnite bilo koju tipku za sljedeći frame...")
         cv2.waitKey(0)
         cv2.destroyAllWindows()
@@ -344,7 +474,9 @@ def process_frame(frame_num: int, data_root: Path, show_images: bool = False) ->
         "Yaw (°)": f"{yaw:.2f}",
         "Roll (°)": f"{roll:.2f}",
         "Gaze Direction": gaze_desc,
-        "BIWI Accuracy": "Dobro"
+        "Depth Range": depth_info,
+        "Face Landmarks": len(get_face_landmarks(img)),
+        "Accuracy": "Dobro"
     }
 
 
@@ -363,10 +495,11 @@ def main():
     # Frames to process
     frame_ids = [50, 150, 250]
     
-    print("\n" + "="*90)
-    print("ZADATAK 1: Vizualna Interpretacija BIWI Head Pose Podataka")
+    print("\n" + "="*110)
+    print("ZADATAK 1: Vizualna Interpretacija BIWI Head Pose Podataka sa HPE Utilities")
     print("Student: Krešimir Hartl (24)")
-    print("="*90)
+    print("Integrirane funkcionalnosti: Depth, FaceMesh, Pose, Euler kutovi, Roll gauge")
+    print("="*110)
     
     results = []
     
@@ -383,9 +516,9 @@ def main():
     if results:
         df = pd.DataFrame(results)
         
-        print("\n" + "="*90)
+        print("\n" + "="*110)
         print("TABLICA REZULTATA")
-        print("="*90)
+        print("="*110)
         print(df.to_string(index=False))
         
         # Save table to CSV
@@ -394,9 +527,13 @@ def main():
         df.to_csv(output_csv, index=False)
         print(f"\nTabličnih rezultata pohranjena: {output_csv}")
     
-    print("\n" + "="*90)
-    print("Obrada završena! Vizualizacije su sprema u /outputs direktoriju.")
-    print("="*90 + "\n")
+    print("\n" + "="*110)
+    print("Obrada završena! Sve vizualizacije su sprema u /outputs direktoriju.")
+    print("Datoteke:")
+    print("  - frame_XXXXX_with_axes.png  (slike sa sve vizualizacijama)")
+    print("  - frame_XXXXX_depth.png      (mape dubina sa jet colormap-om)")
+    print("  - task1_results.csv          (tablica rezultata)")
+    print("="*110 + "\n")
 
 
 if __name__ == "__main__":
