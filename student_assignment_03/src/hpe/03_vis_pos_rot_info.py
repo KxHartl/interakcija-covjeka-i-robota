@@ -59,8 +59,8 @@ def draw_axes_perspective(img, R, T_mm, axis_len_mm=200.0):
 
 
 if __name__ == "__main__":
-    root = Path(r"C:\HRI\mediapipe_vjezba\data\raw\hpe\03")
-    frame_id = 100
+    root = Path("./data/raw/hpe/24")
+    frame_id = 250
 
     rgb_path  = root / f"frame_{frame_id:05d}_rgb.png"
     pose_path = root / f"frame_{frame_id:05d}_pose.txt"

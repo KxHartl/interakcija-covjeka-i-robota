@@ -11,7 +11,7 @@ face_mesh = mp_face_mesh.FaceMesh(
 )
 
 # --- 2. Učitavanje slike ---
-image_path = r"C:\HRI\mediapipe_vjezba\data\raw\hpe\03\frame_00100_rgb.png"
+image_path = "./data/raw/hpe/24/frame_00508_rgb.png"
 image = cv2.imread(image_path)
 
 if image is None:

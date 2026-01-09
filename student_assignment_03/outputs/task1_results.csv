@@ -1,4 +1,4 @@
-Frame,Pitch (°),Yaw (°),Roll (°),Gaze Direction,BIWI Accuracy
-50,-20.58,9.65,-3.69,"gleda DOLJE, gleda naprijed, bez nagiba",Dobro
-150,-73.59,2.81,-2.96,"gleda DOLJE, gleda naprijed, bez nagiba",Dobro
-250,-30.86,3.38,-3.17,"gleda DOLJE, gleda naprijed, bez nagiba",Dobro
+Frame,Pitch (°),Yaw (°),Roll (°),Gaze Direction,Depth Range,Face Landmarks
+50,-20.58,9.65,-3.69,"gleda DOLJE, gleda naprijed, bez nagiba",704 - 1298 mm,478
+150,-73.59,2.81,-2.96,"gleda DOLJE, gleda naprijed, bez nagiba",706 - 1298 mm,0
+250,-30.86,3.38,-3.17,"gleda DOLJE, gleda naprijed, bez nagiba",712 - 1298 mm,468

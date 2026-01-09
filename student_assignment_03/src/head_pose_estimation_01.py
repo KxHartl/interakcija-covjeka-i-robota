@@ -124,8 +124,11 @@ def project_point(P: np.ndarray) -> Tuple[int, int]:
     Uses camera intrinsics matrix K.
     """
     p = K @ P
-    u = p[0] / p[2]
-    v = p[1] / p[2]
+    z = p[2]
+    if z == 0:
+        return 0, 0
+    u = p[0] / z
+    v = p[1] / z
     return int(round(u)), int(round(v))
 
 
@@ -134,17 +137,45 @@ def get_face_landmarks(img: np.ndarray) -> List[Tuple[int, int]]:
     Extract 468 face landmarks using MediaPipe FaceMesh (from 04_face_mesh.py)
     """
     image_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-    results = face_mesh.process(image_rgb)
-    
+    h, w = img.shape[:2]
+
+    # Try multiple scales — sometimes small faces are missed at original size
+    scales = [1.0, 1.5, 2.0]
     landmarks = []
-    if results.multi_face_landmarks:
-        h, w, _ = img.shape
-        for face in results.multi_face_landmarks:
-            for lm in face.landmark:
-                x = int(lm.x * w)
-                y = int(lm.y * h)
-                landmarks.append((x, y))
-    
+
+    for scale in scales:
+        if scale == 1.0:
+            proc_img = image_rgb
+            proc_w, proc_h = w, h
+        else:
+            proc_w, proc_h = int(w * scale), int(h * scale)
+            proc_img = cv2.resize(image_rgb, (proc_w, proc_h), interpolation=cv2.INTER_LINEAR)
+
+        # Use existing global face_mesh for the first attempt, otherwise create a temporary one with lower threshold
+        if scale == 1.0:
+            results = face_mesh.process(proc_img)
+        else:
+            with mp_face_mesh.FaceMesh(
+                static_image_mode=True,
+                max_num_faces=1,
+                refine_landmarks=False,
+                min_detection_confidence=0.25
+            ) as tmp_mesh:
+                results = tmp_mesh.process(proc_img)
+
+        if results and results.multi_face_landmarks:
+            # Map normalized landmarks back to original image coordinates
+            for face in results.multi_face_landmarks:
+                for lm in face.landmark:
+                    x = int(lm.x * w)
+                    y = int(lm.y * h)
+                    landmarks.append((x, y))
+            print(f"FaceMesh: detektirano lice pri skali {scale}x (landmarka count={len(landmarks)})")
+            break
+
+    if not landmarks:
+        print("FaceMesh: nije detektirano lice na slici nakon višestrukih pokušaja.")
+
     return landmarks
 
 
@@ -161,22 +192,18 @@ def draw_axes_on_image(img: np.ndarray, R: np.ndarray, T_mm: np.ndarray,
     Y-axis: green (vertical/up)
     Z-axis: blue (forward/out of head)
     """
-    # Convert translation from mm to meters for consistency
-    T_m = T_mm / 1000.0
-    
-    # Head origin
-    P0 = T_m
-    
+    # Expect translation in millimetres (T_mm). Compute axes endpoints in mm.
+    P0 = T_mm.astype(np.float32)
+
     # Local head axes (columns of rotation matrix)
-    x_axis = R[:, 0]
-    y_axis = R[:, 1]
-    z_axis = R[:, 2]
-    
-    # Axis endpoints in camera space (meters)
-    axis_len_m = axis_len_mm / 1000.0
-    PX = T_m + axis_len_m * x_axis
-    PY = T_m + axis_len_m * y_axis
-    PZ = T_m + axis_len_m * z_axis
+    x_axis = R[:, 0].astype(np.float32)
+    y_axis = R[:, 1].astype(np.float32)
+    z_axis = R[:, 2].astype(np.float32)
+
+    # Axis endpoints in camera space (millimetres)
+    PX = P0 + axis_len_mm * x_axis
+    PY = P0 + axis_len_mm * y_axis
+    PZ = P0 + axis_len_mm * z_axis
     
     # Project to 2D image coordinates
     u0, v0 = project_point(P0)
@@ -442,8 +469,8 @@ def process_frame(frame_num: int, data_root: Path, show_images: bool = False) ->
     # Add face mesh landmarks
     img_with_mesh = draw_face_mesh(img_with_viz)
     
-    # Save result
-    output_path = data_root.parent.parent.parent / f"outputs/frame_{frame_num:05d}_with_axes.png"
+    # Save result to repository-level outputs folder
+    output_path = Path("outputs") / f"frame_{frame_num:05d}_with_axes.png"
     output_path.parent.mkdir(parents=True, exist_ok=True)
     cv2.imwrite(str(output_path), img_with_mesh)
     print(f"  Pohrana: {output_path}")
@@ -468,6 +495,9 @@ def process_frame(frame_num: int, data_root: Path, show_images: bool = False) ->
         cv2.waitKey(0)
         cv2.destroyAllWindows()
     
+    # Face landmarks count for informational purposes
+    n_landmarks = len(get_face_landmarks(img))
+
     return {
         "Frame": frame_num,
         "Pitch (°)": f"{pitch:.2f}",
@@ -475,8 +505,7 @@ def process_frame(frame_num: int, data_root: Path, show_images: bool = False) ->
         "Roll (°)": f"{roll:.2f}",
         "Gaze Direction": gaze_desc,
         "Depth Range": depth_info,
-        "Face Landmarks": len(get_face_landmarks(img)),
-        "Accuracy": "Dobro"
+        "Face Landmarks": n_landmarks
     }
 
 

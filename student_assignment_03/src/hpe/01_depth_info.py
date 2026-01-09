@@ -32,8 +32,8 @@ def decode_biwi_depth(filepath: str) -> np.ndarray:
 
 if __name__ == "__main__":
     # prilagodi putanju i frame_id
-    root = Path(r"C:\HRI\mediapipe_vjezba\data\raw\hpe\03")
-    frame_id = 100
+    root = Path("./data/raw/hpe/24")
+    frame_id = 50
 
     depth_bin_path = root / f"frame_{frame_id:05d}_depth.bin"
     print(f"Čitam depth iz: {depth_bin_path}")
