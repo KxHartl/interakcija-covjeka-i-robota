@@ -17,11 +17,13 @@ from pathlib import Path
 
 # Konfiguracija
 DATA_DIR = 'data/raw/1137'
-IMAGE_INDICES = [1, 5, 10, 15, 20]  # 5 fotografija: 000001.jpg, 000005.jpg, itd.
+IMAGE_INDICES = [1, 5, 10, 15, 20]  # koristimo prvi frame iz 1137.mat (000001.jpg)
 SELECTED_KEYPOINT = 0 
 KEYPOINT_NAMES = {
     0: "Head",
 }
+# Prikaz slika s označenim GT i MediaPipe točkama
+SHOW_IMAGES = True
 
 # Mapiranje PennAction točaka na MediaPipe Pose landmarkove
 # PennAction ima 13 točaka, MediaPipe Pose ima 33 landmarka
@@ -108,6 +110,42 @@ def calculate_error(gt_x, gt_y, mp_x, mp_y):
     return np.sqrt((gt_x - mp_x)**2 + (gt_y - mp_y)**2)
 
 
+def display_comparison(image_path, gt_point, mp_point, error):
+    """
+    Prikaži sliku s označenom ground truth i MediaPipe točkom te linijom i tekstom razlike.
+    """
+    img = cv2.imread(image_path)
+    if img is None:
+        return
+
+    # Boje
+    gt_color = (255, 0, 0)      # plava za ground truth
+    mp_color = (0, 0, 255)      # crvena za MediaPipe
+    line_color = (0, 255, 255)  # žuta za liniju
+    font = cv2.FONT_HERSHEY_SIMPLEX
+
+    # Nacrtaj točke i liniju
+    if gt_point is not None:
+        cv2.circle(img, (int(gt_point[0]), int(gt_point[1])), 6, gt_color, -1)
+        cv2.putText(img, 'GT', (int(gt_point[0]) + 8, int(gt_point[1]) - 8), font, 0.6, gt_color, 2, cv2.LINE_AA)
+    if mp_point is not None:
+        cv2.circle(img, (int(mp_point[0]), int(mp_point[1])), 6, mp_color, -1)
+        cv2.putText(img, 'MP', (int(mp_point[0]) + 8, int(mp_point[1]) - 8), font, 0.6, mp_color, 2, cv2.LINE_AA)
+    if gt_point is not None and mp_point is not None:
+        cv2.line(img, (int(gt_point[0]), int(gt_point[1])), (int(mp_point[0]), int(mp_point[1])), line_color, 2)
+
+    # Prikaži tekst s razlikom
+    info_y = 30
+    if error is not None:
+        cv2.putText(img, f"Euklidska distanca: {error:.2f} px", (10, info_y), font, 0.7, (0, 128, 0), 2, cv2.LINE_AA)
+
+    # Prikaži sliku i čekaj tipku
+    window_name = os.path.basename(image_path)
+    cv2.imshow(window_name, img)
+    cv2.waitKey(0)
+    cv2.destroyAllWindows()
+
+
 def main():
     """
     Glavna funkcija za usporedbu ground truth i MediaPipe podataka
@@ -121,8 +159,8 @@ def main():
     print(f"MediaPipe indeks: {PENNACTION_TO_MEDIAPIPE[SELECTED_KEYPOINT]}")
     print("\n" + "=" * 80)
     
-    # Učitaj .mat datoteku
-    mat_file = os.path.join(DATA_DIR, '1347.mat')
+    # Učitaj .mat datoteku (koristimo 1137.mat i ground truth za prvi frame)
+    mat_file = os.path.join(DATA_DIR, '1137.mat')
     
     results = []
     
@@ -177,6 +215,10 @@ def main():
         print(f"  ✓ MediaPipe:   ({mp_x}, {mp_y})")
         print(f"  ✓ Razlika: ({result['diff_x']:+d}, {result['diff_y']:+d})")
         print(f"  ✓ Euklidska distanca: {error:.2f} px")
+
+        # Prikaži sliku s označenim točkama (ako je omogućeno)
+        if SHOW_IMAGES:
+            display_comparison(image_path, (gt_x, gt_y), (mp_x, mp_y), error)
     
     # Ispis tablice rezultata
     print("\n" + "=" * 80)

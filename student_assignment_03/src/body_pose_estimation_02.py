@@ -19,6 +19,8 @@ from pathlib import Path
 DATA_DIR = 'data/raw/1137'
 IMAGE_INDICES = [1, 5, 10, 15, 20]  # 5 fotografija
 OUTPUT_FILE = 'outputs/body_pose_estimation_02_results.csv'
+# Prikaz slika sa landmarkovima
+SHOW_IMAGES = True
 
 
 def calculate_angle(point_a, point_b, point_c):
@@ -97,14 +99,53 @@ def get_pose_landmarks(image_path):
     return landmarks
 
 
+def display_landmarks(image_path, landmarks, right_elbow_angle=None, left_knee_angle=None):
+    """
+    Prikaži sliku s nacrtanim ključnim točkama i ispisanim kutovima.
+    """
+    img = cv2.imread(image_path)
+    if img is None:
+        return
+
+    # Boje i font
+    color_point = (0, 255, 0)
+    color_text = (0, 0, 255)
+    font = cv2.FONT_HERSHEY_SIMPLEX
+
+    # Landmark indeksi koje želimo označiti (prema MediaPipe indeksima)
+    indices = {
+        12: 'R_Shldr', 14: 'R_Elbow', 16: 'R_Wrist',
+        23: 'L_Hip', 25: 'L_Knee', 27: 'L_Ankle'
+    }
+
+    for idx, name in indices.items():
+        if idx in landmarks and landmarks[idx] is not None:
+            x, y = landmarks[idx]
+            cv2.circle(img, (x, y), 5, color_point, -1)
+            cv2.putText(img, name, (x + 6, y - 6), font, 0.5, color_point, 1, cv2.LINE_AA)
+
+    # Prikaži kutove u gornjem lijevom kutu
+    text_y = 30
+    if right_elbow_angle is not None:
+        cv2.putText(img, f"Desni lakat: {right_elbow_angle:.2f}°", (10, text_y), font, 0.7, color_text, 2, cv2.LINE_AA)
+        text_y += 30
+    if left_knee_angle is not None:
+        cv2.putText(img, f"Lijevo koljeno: {left_knee_angle:.2f}°", (10, text_y), font, 0.7, color_text, 2, cv2.LINE_AA)
+
+    window_name = os.path.basename(image_path)
+    cv2.imshow(window_name, img)
+    cv2.waitKey(0)
+    cv2.destroyAllWindows()
+
+
 def calculate_right_elbow_angle(landmarks):
     """
     Izračunaj kut desnog lakta.
     
     Lakat je vertex (srednja točka):
     - Rameno (RIGHT_SHOULDER) - 12
-    - Lakat (RIGHT_ELBOW) - 11
-    - Zapis (RIGHT_WRIST) - 10
+    - Lakat (RIGHT_ELBOW) - 14
+    - Zapešće (RIGHT_WRIST) - 16
     
     Args:
         landmarks: rječnik landmarkova
@@ -112,12 +153,12 @@ def calculate_right_elbow_angle(landmarks):
     Returns:
         float: kut lakta u stupnjima
     """
-    if None in [landmarks.get(12), landmarks.get(11), landmarks.get(10)]:
+    if None in [landmarks.get(12), landmarks.get(14), landmarks.get(16)]:
         return None
-    
+
     shoulder = landmarks[12]  # RIGHT_SHOULDER
-    elbow = landmarks[11]     # RIGHT_ELBOW
-    wrist = landmarks[10]     # RIGHT_WRIST
+    elbow = landmarks[14]     # RIGHT_ELBOW
+    wrist = landmarks[16]     # RIGHT_WRIST
     
     angle = calculate_angle(shoulder, elbow, wrist)
     return angle
@@ -193,6 +234,10 @@ def main():
             continue
         
         # Spremi rezultat
+        # Prikaži sliku s označenim landmarkovima i kutovima (ako je omogućeno)
+        if SHOW_IMAGES:
+            display_landmarks(image_path, landmarks, right_elbow_angle, left_knee_angle)
+
         result = {
             'image_id': image_name,
             'right_elbow_angle': right_elbow_angle,

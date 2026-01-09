@@ -32,6 +32,9 @@ DATA_DIR = 'data/raw/1137'
 IMAGE_INDICES = [1, 5, 10, 15, 20]  # 5 fotografija
 OUTPUT_FILE = 'outputs/body_pose_estimation_03_results.csv'
 
+# Prikaz slika sa označenim torzom i kutom
+SHOW_IMAGES = True
+
 # Landmarki torza
 # Ramena
 LEFT_SHOULDER = 11
@@ -170,6 +173,53 @@ def get_torso_visualization_info(landmarks):
     }
 
 
+def display_torso(image_path, torso_info, tilt_angle=None):
+    """
+    Prikaži sliku s označenim točkama torza, srednjim točkama i linijom nagiba.
+    """
+    img = cv2.imread(image_path)
+    if img is None:
+        return
+
+    # Boje i font
+    color_shoulder = (0, 255, 0)
+    color_hip = (255, 0, 0)
+    color_mid = (0, 255, 255)
+    color_line = (0, 128, 255)
+    font = cv2.FONT_HERSHEY_SIMPLEX
+
+    # Crtaj ključne točke
+    for name in ['left_shoulder', 'right_shoulder', 'left_hip', 'right_hip']:
+        pt = torso_info.get(name)
+        if pt is not None:
+            x, y = int(pt[0]), int(pt[1])
+            clr = color_shoulder if 'shoulder' in name else color_hip
+            cv2.circle(img, (x, y), 5, clr, -1)
+            cv2.putText(img, name, (x + 6, y - 6), font, 0.5, clr, 1, cv2.LINE_AA)
+
+    # Srednje točke
+    sx, sy = int(torso_info['shoulder_midpoint'][0]), int(torso_info['shoulder_midpoint'][1])
+    hx, hy = int(torso_info['hip_midpoint'][0]), int(torso_info['hip_midpoint'][1])
+    cv2.circle(img, (sx, sy), 6, color_mid, -1)
+    cv2.circle(img, (hx, hy), 6, color_mid, -1)
+    cv2.putText(img, 'Shoulder_mid', (sx + 8, sy - 8), font, 0.5, color_mid, 1, cv2.LINE_AA)
+    cv2.putText(img, 'Hip_mid', (hx + 8, hy - 8), font, 0.5, color_mid, 1, cv2.LINE_AA)
+
+    # Linija između srednjih točaka
+    cv2.line(img, (sx, sy), (hx, hy), color_line, 2)
+
+    # Ispiši kut ako postoji
+    if tilt_angle is not None:
+        text = f"Nagib: {tilt_angle:+.2f}°"
+        cv2.putText(img, text, (10, 30), font, 0.8, (0, 0, 255), 2, cv2.LINE_AA)
+
+    # Prikaži i čekaj tipku
+    window_name = os.path.basename(image_path)
+    cv2.imshow(window_name, img)
+    cv2.waitKey(0)
+    cv2.destroyAllWindows()
+
+
 def main():
     """
     Glavna funkcija za izračun nagiba tijela
@@ -249,6 +299,10 @@ def main():
         print(f"  ✓ Nagib: {tilt_angle:+.2f}° ({direction})")
         print(f"  ✓ Srednja točka ramena: ({torso_info['shoulder_midpoint'][0]:.0f}, {torso_info['shoulder_midpoint'][1]:.0f})")
         print(f"  ✓ Srednja točka kukova: ({torso_info['hip_midpoint'][0]:.0f}, {torso_info['hip_midpoint'][1]:.0f})")
+        
+        # Prikaži sliku s vizualizacijom torza (ako je omogućeno)
+        if SHOW_IMAGES:
+            display_torso(image_path, torso_info, tilt_angle)
     
     # Ispis tablice rezultata
     print("\n" + "=" * 90)
