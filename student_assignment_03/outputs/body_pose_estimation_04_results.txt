@@ -1,0 +1,45 @@
+==========================================================================================
+PRAĆENJE BRZINE GIBANJA ZAPEŠĆA - LIVE FEED
+==========================================================================================
+
+Datum i vrijeme snimanja: 2026-01-09 23:29:04
+
+PARAMETRI KAMERE:
+--------------------------------------------------
+Rezolucija: 640x480
+FPS: 30.00
+Vrijeme po frame-u: 33.33ms
+
+KALIBRACIJA:
+--------------------------------------------------
+Pretpostavljena distanca: 30cm
+Inicialna konverzija (heuristika): 0.1426 cm/piksel
+ili 7.01 piksela/cm
+Iris kalibracija primijenjena: Da
+Zadnja iris konverzija: 0.14261 cm/piksel
+
+OPĆE INFORMACIJE:
+--------------------------------------------------
+Ukupno frame-ova: 877
+Ukupno vremena: 30.03s
+Prosječni FPS: 29.20
+Broj mjerenja brzine (desno): 708
+Broj mjerenja brzine (lijevo): 367
+
+STATISTIKA BRZINE ZAPEŠĆA (DESNO):
+--------------------------------------------------
+Prosječna brzina: 0.845 m/s
+Minimalna brzina: 0.000 m/s
+Maksimalna brzina: 8.805 m/s
+Standardna devijacija: 1.555 m/s
+
+STATISTIKA BRZINE ZAPEŠĆA (LIJEVO):
+--------------------------------------------------
+Prosječna brzina: 0.823 m/s
+Minimalna brzina: 0.051 m/s
+Maksimalna brzina: 6.354 m/s
+Standardna devijacija: 1.335 m/s
+
+DETALJNI PODACI (CSV):
+CSV datoteka: outputs/body_pose_estimation_04_results.csv
+==========================================================================================

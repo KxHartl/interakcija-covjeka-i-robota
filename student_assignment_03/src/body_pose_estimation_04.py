@@ -33,6 +33,8 @@ LEFT_WRIST = 15
 # i da zauzima ~60% slike u szerini
 CALIBRATION_DISTANCE_CM = 30  # 30cm
 CALIBRATION_WIDTH_RATIO = 0.6  # Osoba zauzima ~60% slike
+# Iris konstanta
+IRIS_DIAMETER_MM = 11.7  # prosječan promjer irisne kugle u mm
 
 
 def get_camera_fps(cap):
@@ -166,6 +168,10 @@ def main():
         CALIBRATION_DISTANCE_CM,
         CALIBRATION_WIDTH_RATIO
     )
+    # Trenutna konverzija koja se može ažurirati iris kalibracijom
+    pixels_to_cm_current = pixels_to_cm
+    iris_calibrated_any = False
+    last_iris_pixels_to_cm = None
     
     print(f"\nKalibracija:")
     print(f"  - Pretpostavljena distanca: {CALIBRATION_DISTANCE_CM}cm")
@@ -174,6 +180,7 @@ def main():
     
     # MediaPipe Pose inicijalizacija
     mp_pose = mp.solutions.pose
+    mp_face_mesh = mp.solutions.face_mesh
     
     # Spremi i aktivne varijable (odvojeno za desno i lijevo zapešće)
     previous_right_wrist_pos = None
@@ -184,6 +191,9 @@ def main():
     # Buferi za statistiku (odvojeno)
     right_velocity_buffer = deque(maxlen=FPS_BUFFER_SIZE)
     left_velocity_buffer = deque(maxlen=FPS_BUFFER_SIZE)
+    # Stvarni brojači mjerenja (ne ograničeni veličinom buffera)
+    right_measure_count = 0
+    left_measure_count = 0
     frame_count = 0
     start_time = time.time()
     previous_time = time.time()
@@ -195,12 +205,19 @@ def main():
     print("POČINJE SNIMANJE - Pritisnite 'Q' za izlaz")
     print("=" * 90)
 
+    # Koristimo i FaceMesh za irisnu kalibraciju (refine_landmarks za iris)
     with mp_pose.Pose(
         static_image_mode=False,
         smooth_landmarks=True,
         min_detection_confidence=0.5,
         min_tracking_confidence=0.5
-    ) as pose:
+    ) as pose, mp_face_mesh.FaceMesh(
+        static_image_mode=False,
+        max_num_faces=1,
+        refine_landmarks=True,
+        min_detection_confidence=0.5,
+        min_tracking_confidence=0.5
+    ) as face_mesh:
         
         while True:
             ret, frame = cap.read()
@@ -218,6 +235,8 @@ def main():
             
             # Detektuj pose
             results = pose.process(frame_rgb)
+            # Detektuj face mesh za iris kalibraciju
+            face_results = face_mesh.process(frame_rgb)
             
             # Inicijalizacija za crtanje
             frame_display = frame.copy()
@@ -248,6 +267,58 @@ def main():
                     h, w, c = frame.shape
                     cx, cy = int(landmark.x * w), int(landmark.y * h)
                     cv2.circle(frame_display, (cx, cy), 3, (0, 255, 0), -1)
+
+            # Ako imamo face mesh, pokušaj izračunati iris promjer u pikselima
+            iris_calibrated = False
+            if face_results and face_results.multi_face_landmarks:
+                # Uzmemo prvu detektiranu facu
+                fl = face_results.multi_face_landmarks[0]
+                # MediaPipe iris landmarki: left 468-472, right 473-477 (5 točaka svaka)
+                try:
+                    h, w, _ = frame.shape
+                    # prikupi točke lijevog i desnog irisa
+                    left_iris_pts = [fl.landmark[i] for i in range(468, 473)]
+                    right_iris_pts = [fl.landmark[i] for i in range(473, 478)]
+
+                    def iris_diameter_pixels(pts):
+                        xs = [int(p.x * w) for p in pts]
+                        ys = [int(p.y * h) for p in pts]
+                        cx = sum(xs) / len(xs)
+                        cy = sum(ys) / len(ys)
+                        # izračunaj prosječnu udaljenost od centra (radij)
+                        import math
+                        rs = [math.hypot(x - cx, y - cy) for x, y in zip(xs, ys)]
+                        r_mean = sum(rs) / len(rs)
+                        return 2.0 * r_mean
+
+                    left_d = iris_diameter_pixels(left_iris_pts)
+                    right_d = iris_diameter_pixels(right_iris_pts)
+                    # odaberi veći izmjereni promjer ako postoji, inače prosjek
+                    measured_d_px = None
+                    if left_d > 0 and right_d > 0:
+                        measured_d_px = max(left_d, right_d)
+                    elif left_d > 0:
+                        measured_d_px = left_d
+                    elif right_d > 0:
+                        measured_d_px = right_d
+
+                    if measured_d_px and measured_d_px > 0:
+                        # IRIS_DIAMETER_MM -> u cm
+                        iris_cm = IRIS_DIAMETER_MM / 10.0
+                        pixels_to_cm = iris_cm / measured_d_px
+                        iris_calibrated = True
+                        iris_calibrated_any = True
+                        # ažuriraj trenutnu konverziju i zabilježi zadnju vrijednost
+                        pixels_to_cm_current = pixels_to_cm
+                        last_iris_pixels_to_cm = pixels_to_cm_current
+                        # zapiši u results_data da se može kasnije ispisati
+                        calib_note = f"Iris calib: {measured_d_px:.1f}px -> {pixels_to_cm:.5f} cm/px"
+                        # opcionalno nacrtaj iris točke
+                        for p in left_iris_pts + right_iris_pts:
+                            cv2.circle(frame_display, (int(p.x * w), int(p.y * h)), 2, (255, 255, 0), -1)
+                        cv2.putText(frame_display, calib_note, (10, frame_height - 20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255,255,0), 2)
+                except Exception:
+                    iris_calibrated = False
             
             # Izračunaj brzine zasebno za desno i lijevo zapešće
             right_velocity_cm_s, right_velocity_m_s = 0.0, 0.0
@@ -267,8 +338,9 @@ def main():
                     distance_pixels_l, pixels_to_cm, dt_l
                 )
             
-            # Ispis na frame
-            display_text = f"Frame: {frame_count} | FPS: {1.0/time_delta:.1f}"
+            # Ispis na frame (sigurno za dijeljenje s nulom)
+            fps_display = (1.0 / time_delta) if time_delta > 0 else 0.0
+            display_text = f"Frame: {frame_count} | FPS: {fps_display:.1f}"
             cv2.putText(
                 frame_display, display_text, (10, 30),
                 cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2
@@ -298,9 +370,11 @@ def main():
                     'time': current_time - start_time,
                     'wrist': 'DESNO',
                     'position': right_wrist_pos,
+                    'pixels_to_cm': pixels_to_cm_current,
                     'velocity_m_s': right_velocity_m_s
                 })
                 right_velocity_buffer.append(right_velocity_m_s)
+                right_measure_count += 1
 
             if left_wrist_pos is not None:
                 results_data.append({
@@ -308,9 +382,11 @@ def main():
                     'time': current_time - start_time,
                     'wrist': 'LIJEVO',
                     'position': left_wrist_pos,
+                    'pixels_to_cm': pixels_to_cm_current,
                     'velocity_m_s': left_velocity_m_s
                 })
                 left_velocity_buffer.append(left_velocity_m_s)
+                left_measure_count += 1
             
             # Prikaži frame
             cv2.imshow('Praćenje zapešća - Brzina gibanja', frame_display)
@@ -329,6 +405,8 @@ def main():
             if left_wrist_pos is not None:
                 previous_left_wrist_pos = left_wrist_pos
                 previous_left_time = current_time
+            # Ažuriraj globalno vrijeme za sljedeći frame
+            previous_time = current_time
     
     # Zatvori kameru
     cap.release()
@@ -345,8 +423,8 @@ def main():
     print(f"  - Ukupno frame-ova: {frame_count}")
     print(f"  - Ukupno vremena: {elapsed_time:.2f}s")
     print(f"  - Prosječni FPS: {frame_count/elapsed_time:.2f}")
-    print(f"  - Broj mjerenja brzine (desno): {len(right_velocity_buffer)}")
-    print(f"  - Broj mjerenja brzine (lijevo): {len(left_velocity_buffer)}")
+    print(f"  - Broj mjerenja brzine (desno): {right_measure_count}")
+    print(f"  - Broj mjerenja brzine (lijevo): {left_measure_count}")
 
     if right_velocity_buffer:
         rv = list(right_velocity_buffer)
@@ -386,16 +464,21 @@ def main():
         f.write("KALIBRACIJA:\n")
         f.write("-" * 50 + "\n")
         f.write(f"Pretpostavljena distanca: {CALIBRATION_DISTANCE_CM}cm\n")
-        f.write(f"Konverzija: {pixels_to_cm:.4f} cm/piksel\n")
-        f.write(f"ili {1/pixels_to_cm:.2f} piksela/cm\n\n")
+        f.write(f"Inicialna konverzija (heuristika): {pixels_to_cm:.4f} cm/piksel\n")
+        f.write(f"ili {1/pixels_to_cm:.2f} piksela/cm\n")
+        if iris_calibrated_any:
+            f.write(f"Iris kalibracija primijenjena: Da\n")
+            f.write(f"Zadnja iris konverzija: {last_iris_pixels_to_cm:.5f} cm/piksel\n\n")
+        else:
+            f.write(f"Iris kalibracija primijenjena: Ne\n\n")
         
         f.write("OPĆE INFORMACIJE:\n")
         f.write("-" * 50 + "\n")
         f.write(f"Ukupno frame-ova: {frame_count}\n")
         f.write(f"Ukupno vremena: {elapsed_time:.2f}s\n")
         f.write(f"Prosječni FPS: {frame_count/elapsed_time:.2f}\n")
-        f.write(f"Broj mjerenja brzine (desno): {len(right_velocity_buffer)}\n")
-        f.write(f"Broj mjerenja brzine (lijevo): {len(left_velocity_buffer)}\n\n")
+        f.write(f"Broj mjerenja brzine (desno): {right_measure_count}\n")
+        f.write(f"Broj mjerenja brzine (lijevo): {left_measure_count}\n\n")
 
         if right_velocity_buffer:
             rv = list(right_velocity_buffer)
@@ -415,15 +498,29 @@ def main():
             f.write(f"Maksimalna brzina: {np.max(lv):.3f} m/s\n")
             f.write(f"Standardna devijacija: {np.std(lv):.3f} m/s\n\n")
         
-        f.write("DETALJNI PODACI:\n")
+        f.write("DETALJNI PODACI (CSV):\n")
+        csv_output = 'outputs/body_pose_estimation_04_results.csv'
+        f.write(f"CSV datoteka: {csv_output}\n")
         f.write("=" * 90 + "\n")
-        f.write(f"{'Frame':<10} {'Vrijeme (s)':<15} {'Zapešće':<10} {'X':<8} {'Y':<8} {'Brzina (m/s)':<15}\n")
-        f.write("-" * 90 + "\n")
-        
+
+    # Spremi detaljne podatke u CSV format
+    os.makedirs('outputs', exist_ok=True)
+    import csv as _csv
+    with open(os.path.join('outputs', 'body_pose_estimation_04_results.csv'), 'w', newline='', encoding='utf-8') as csvfile:
+        writer = _csv.writer(csvfile)
+        # Header: Frame,Vrijeme (s),Zapešće,X,Y,Konverzija (cm/piksel),Brzina (m/s)
+        writer.writerow(['Frame','Vrijeme (s)','Zapešće','X','Y','Konverzija (cm/piksel)','Brzina (m/s)'])
         for data in results_data:
             x, y = data['position']
-            f.write(f"{data['frame']:<10} {data['time']:<15.3f} {data['wrist']:<10} "
-                   f"{x:<8} {y:<8} {data['velocity_m_s']:<15.3f}\n")
+            writer.writerow([
+                data['frame'],
+                f"{data['time']:.3f}",
+                data['wrist'],
+                x,
+                y,
+                f"{data.get('pixels_to_cm', pixels_to_cm):.5f}",
+                f"{data['velocity_m_s']:.3f}"
+            ])
     
     print(f"✓ Detaljni rezultati su spremljeni u: {output_file}")
     print()
