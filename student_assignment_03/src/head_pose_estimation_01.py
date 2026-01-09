@@ -6,9 +6,10 @@ Author: Krešimir Hartl (Student 24)
 For 3 RGB images from BIWI dataset:
 1. Load RGB image and rotation/translation information
 2. Calculate Euler angles (XYZ convention)
-3. Draw head axes on the image
-4. Describe where the person is looking
-5. Compare results in a table
+3. Draw head axes on the image with coordinate system
+4. Visualize gaze direction and head tilt
+5. Describe where the person is looking
+6. Compare results in a table
 """
 
 import numpy as np
@@ -89,9 +90,9 @@ def draw_axes_on_image(img: np.ndarray, R: np.ndarray, T_mm: np.ndarray,
     """
     Draw 3D coordinate axes on the image based on head pose.
     
-    X-axis: red
-    Y-axis: green
-    Z-axis: blue
+    X-axis: red (lateral/right)
+    Y-axis: green (vertical/up)
+    Z-axis: blue (forward/out of head)
     """
     # Convert translation from mm to meters for consistency
     T_m = T_mm / 1000.0
@@ -119,23 +120,135 @@ def draw_axes_on_image(img: np.ndarray, R: np.ndarray, T_mm: np.ndarray,
     # Draw on image
     img_with_axes = img.copy()
     
-    # Draw center point
-    cv2.circle(img_with_axes, (u0, v0), 5, (0, 255, 255), -1)
+    # Draw semi-transparent background for legend area
+    overlay = img_with_axes.copy()
+    cv2.rectangle(overlay, (5, 5), (420, 105), (0, 0, 0), -1)
+    cv2.addWeighted(overlay, 0.3, img_with_axes, 0.7, 0, img_with_axes)
     
-    # Draw axes
-    cv2.line(img_with_axes, (u0, v0), (ux, vx), (0, 0, 255), 3)    # X – red
-    cv2.line(img_with_axes, (u0, v0), (uy, vy), (0, 255, 0), 3)    # Y – green
-    cv2.line(img_with_axes, (u0, v0), (uz, vz), (255, 0, 0), 3)    # Z – blue
+    # Draw center point (head position)
+    cv2.circle(img_with_axes, (u0, v0), 6, (0, 255, 255), -1)
+    cv2.circle(img_with_axes, (u0, v0), 8, (0, 255, 255), 2)
     
-    # Add labels
-    cv2.putText(img_with_axes, 'X', (ux + 5, vx + 5), cv2.FONT_HERSHEY_SIMPLEX,
-                0.7, (0, 0, 255), 2)
-    cv2.putText(img_with_axes, 'Y', (uy + 5, vy + 5), cv2.FONT_HERSHEY_SIMPLEX,
-                0.7, (0, 255, 0), 2)
-    cv2.putText(img_with_axes, 'Z', (uz + 5, vz + 5), cv2.FONT_HERSHEY_SIMPLEX,
-                0.7, (255, 0, 0), 2)
+    # Draw axes with thicker lines for better visibility
+    cv2.line(img_with_axes, (u0, v0), (ux, vx), (0, 0, 255), 4)    # X – red
+    cv2.line(img_with_axes, (u0, v0), (uy, vy), (0, 255, 0), 4)    # Y – green
+    cv2.line(img_with_axes, (u0, v0), (uz, vz), (255, 0, 0), 4)    # Z – blue
+    
+    # Draw arrow heads on axes
+    def draw_arrow_head(img, pt_start, pt_end, color):
+        """Draw arrow head at pt_end pointing from pt_start"""
+        dx = pt_end[0] - pt_start[0]
+        dy = pt_end[1] - pt_start[1]
+        length = math.sqrt(dx*dx + dy*dy)
+        if length > 10:
+            dx /= length
+            dy /= length
+            # Perpendicular vectors for arrow head
+            px, py = -dy, dx
+            arrow_size = 15
+            p1 = (int(pt_end[0] - arrow_size*dx - arrow_size*px),
+                  int(pt_end[1] - arrow_size*dy - arrow_size*py))
+            p2 = (int(pt_end[0] - arrow_size*dx + arrow_size*px),
+                  int(pt_end[1] - arrow_size*dy + arrow_size*py))
+            cv2.fillPoly(img, [np.array([pt_end, p1, p2])], color)
+    
+    draw_arrow_head(img_with_axes, (u0, v0), (ux, vx), (0, 0, 255))
+    draw_arrow_head(img_with_axes, (u0, v0), (uy, vy), (0, 255, 0))
+    draw_arrow_head(img_with_axes, (u0, v0), (uz, vz), (255, 0, 0))
+    
+    # Add axis labels with background
+    cv2.putText(img_with_axes, 'X', (ux + 10, vx + 5), cv2.FONT_HERSHEY_SIMPLEX,
+                1.0, (0, 0, 255), 3, cv2.LINE_AA)
+    cv2.putText(img_with_axes, 'Y', (uy + 10, vy - 5), cv2.FONT_HERSHEY_SIMPLEX,
+                1.0, (0, 255, 0), 3, cv2.LINE_AA)
+    cv2.putText(img_with_axes, 'Z', (uz + 10, vz + 5), cv2.FONT_HERSHEY_SIMPLEX,
+                1.0, (255, 0, 0), 3, cv2.LINE_AA)
+    
+    # Add legend
+    legend_x = 15
+    legend_y = 25
+    cv2.putText(img_with_axes, 'Koordinatni sustav:', (legend_x, legend_y),
+                cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 2)
+    cv2.putText(img_with_axes, 'X (crvena) - desna-lijeva os',
+                (legend_x, legend_y + 25), cv2.FONT_HERSHEY_SIMPLEX,
+                0.5, (0, 0, 255), 1)
+    cv2.putText(img_with_axes, 'Y (zelena) - gore-dolje os',
+                (legend_x, legend_y + 45), cv2.FONT_HERSHEY_SIMPLEX,
+                0.5, (0, 255, 0), 1)
+    cv2.putText(img_with_axes, 'Z (plava) - naprijed-natrag',
+                (legend_x, legend_y + 65), cv2.FONT_HERSHEY_SIMPLEX,
+                0.5, (255, 0, 0), 1)
     
     return img_with_axes
+
+
+def add_euler_visualization(img: np.ndarray, pitch: float, yaw: float, roll: float) -> np.ndarray:
+    """
+    Add visual indicators for Euler angles and gaze direction.
+    """
+    h, w = img.shape[:2]
+    img_viz = img.copy()
+    
+    # Draw semi-transparent background for statistics
+    overlay = img_viz.copy()
+    cv2.rectangle(overlay, (w - 380, 5), (w - 5, 180), (0, 0, 0), -1)
+    cv2.addWeighted(overlay, 0.4, img_viz, 0.6, 0, img_viz)
+    
+    # Euler angles text
+    stats_x = w - 370
+    stats_y = 25
+    line_height = 30
+    
+    cv2.putText(img_viz, 'EULER KUTOVI:', (stats_x, stats_y),
+                cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 0), 2)
+    
+    # Pitch (X-axis rotation) - Up/Down gaze
+    pitch_color = (0, 0, 255) if abs(pitch) > 10 else (100, 255, 100)
+    pitch_status = "GORE" if pitch > 10 else "DOLJE" if pitch < -10 else "NEUTRALNO"
+    cv2.putText(img_viz, f'Pitch (X):  {pitch:7.2f}°  {pitch_status}',
+                (stats_x, stats_y + line_height), cv2.FONT_HERSHEY_SIMPLEX,
+                0.6, pitch_color, 2)
+    
+    # Yaw (Y-axis rotation) - Left/Right gaze
+    yaw_color = (255, 0, 0) if abs(yaw) > 10 else (100, 255, 100)
+    yaw_status = "DESNO" if yaw > 10 else "LIJEVO" if yaw < -10 else "NAPRIJED"
+    cv2.putText(img_viz, f'Yaw (Y):    {yaw:7.2f}°  {yaw_status}',
+                (stats_x, stats_y + 2*line_height), cv2.FONT_HERSHEY_SIMPLEX,
+                0.6, yaw_color, 2)
+    
+    # Roll (Z-axis rotation) - Head tilt
+    roll_color = (0, 255, 0) if abs(roll) > 10 else (100, 255, 100)
+    roll_status = "DESNO" if roll > 10 else "LIJEVO" if roll < -10 else "BEZ NAGIBA"
+    cv2.putText(img_viz, f'Roll (Z):   {roll:7.2f}°  {roll_status}',
+                (stats_x, stats_y + 3*line_height), cv2.FONT_HERSHEY_SIMPLEX,
+                0.6, roll_color, 2)
+    
+    # Add visual roll indicator (protractor-like circle at bottom)
+    center_x = w // 2
+    center_y = h - 80
+    radius = 60
+    
+    # Draw roll indicator circle
+    cv2.circle(img_viz, (center_x, center_y), radius, (100, 100, 100), 2)
+    
+    # Draw reference lines (0°, 90°, -90°)
+    cv2.line(img_viz, (center_x - radius - 10, center_y), (center_x + radius + 10, center_y),
+             (100, 100, 100), 1)  # Horizontal line at 0°
+    cv2.line(img_viz, (center_x, center_y - radius - 10), (center_x, center_y + radius + 10),
+             (100, 100, 100), 1)  # Vertical line at ±90°
+    
+    # Draw roll indicator needle
+    rad = math.radians(roll)
+    end_x = int(center_x + radius * math.cos(rad - math.pi/2))
+    end_y = int(center_y + radius * math.sin(rad - math.pi/2))
+    cv2.line(img_viz, (center_x, center_y), (end_x, end_y), (0, 255, 0), 3)
+    cv2.circle(img_viz, (center_x, center_y), 5, (0, 255, 0), -1)
+    
+    # Label roll indicator
+    cv2.putText(img_viz, 'NAGIB (ROLL)', (center_x - 50, center_y + radius + 25),
+                cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2)
+    
+    return img_viz
 
 
 def describe_gaze_direction(pitch: float, yaw: float, roll: float) -> str:
@@ -151,34 +264,39 @@ def describe_gaze_direction(pitch: float, yaw: float, roll: float) -> str:
     
     # Vertical gaze direction (pitch)
     if pitch < -10:
-        descriptions.append("gleda dolje")
+        descriptions.append("gleda DOLJE")
     elif pitch > 10:
-        descriptions.append("gleda gore")
+        descriptions.append("gleda GORE")
     else:
         descriptions.append("gleda horizontalno")
     
     # Horizontal gaze direction (yaw)
     if yaw < -10:
-        descriptions.append("gleda ulijevo")
+        descriptions.append("gleda ULIJEVO")
     elif yaw > 10:
-        descriptions.append("gleda udesno")
+        descriptions.append("gleda UDESNO")
     else:
         descriptions.append("gleda naprijed")
     
     # Head tilt (roll)
     if roll < -10:
-        descriptions.append("nagib ulijevo")
+        descriptions.append("nagib ULIJEVO")
     elif roll > 10:
-        descriptions.append("nagib udesno")
+        descriptions.append("nagib UDESNO")
     else:
         descriptions.append("bez nagiba")
     
     return ", ".join(descriptions)
 
 
-def process_frame(frame_num: int, data_root: Path) -> Dict:
+def process_frame(frame_num: int, data_root: Path, show_images: bool = False) -> Dict:
     """
     Process a single frame: load image and pose, calculate angles, visualize.
+    
+    Args:
+        frame_num: Frame number to process
+        data_root: Root directory for BIWI data
+        show_images: If True, display images during processing
     """
     rgb_path = data_root / f"frame_{frame_num:05d}_rgb.png"
     pose_path = data_root / f"frame_{frame_num:05d}_pose.txt"
@@ -201,19 +319,24 @@ def process_frame(frame_num: int, data_root: Path) -> Dict:
     # Generate gaze description
     gaze_desc = describe_gaze_direction(pitch, yaw, roll)
     
-    # Draw axes on image
+    # Create visualization with axes
     img_with_axes = draw_axes_on_image(img, R, T_mm, axis_len_mm=200)
     
-    # Add text information to image
-    text_info = f"Pitch: {pitch:.1f}°, Yaw: {yaw:.1f}°, Roll: {roll:.1f}°"
-    cv2.putText(img_with_axes, text_info, (10, 30), cv2.FONT_HERSHEY_SIMPLEX,
-                0.7, (255, 255, 255), 2)
+    # Add Euler angle visualization
+    img_with_viz = add_euler_visualization(img_with_axes, pitch, yaw, roll)
     
     # Save result
     output_path = data_root.parent.parent.parent / f"outputs/frame_{frame_num:05d}_with_axes.png"
     output_path.parent.mkdir(parents=True, exist_ok=True)
-    cv2.imwrite(str(output_path), img_with_axes)
-    print(f"Saved: {output_path}")
+    cv2.imwrite(str(output_path), img_with_viz)
+    print(f"  Pohrana: {output_path}")
+    
+    # Display image if requested
+    if show_images:
+        cv2.imshow(f"Frame {frame_num}: {gaze_desc}", img_with_viz)
+        print(f"  Pritisnite bilo koju tipku za sljedeći frame...")
+        cv2.waitKey(0)
+        cv2.destroyAllWindows()
     
     return {
         "Frame": frame_num,
@@ -221,7 +344,7 @@ def process_frame(frame_num: int, data_root: Path) -> Dict:
         "Yaw (°)": f"{yaw:.2f}",
         "Roll (°)": f"{roll:.2f}",
         "Gaze Direction": gaze_desc,
-        "BIWI Accuracy": "Good"
+        "BIWI Accuracy": "Dobro"
     }
 
 
@@ -233,47 +356,47 @@ def main():
     data_root = Path("data/raw/hpe/24")
     
     if not data_root.exists():
-        print(f"Error: Data directory not found at {data_root}")
-        print("Please ensure the BIWI dataset is in the correct location.")
+        print(f"Greška: Direktorij s podacima nije pronađen na {data_root}")
+        print("Molim provjerite da je BIWI dataset u ispravnoj lokaciji.")
         return
     
     # Frames to process
     frame_ids = [50, 150, 250]
     
-    print("="*80)
-    print("Task 1: Visual Interpretation of BIWI Head Pose Data")
+    print("\n" + "="*90)
+    print("ZADATAK 1: Vizualna Interpretacija BIWI Head Pose Podataka")
     print("Student: Krešimir Hartl (24)")
-    print("="*80)
+    print("="*90)
     
     results = []
     
-    for frame_id in frame_ids:
+    for i, frame_id in enumerate(frame_ids, 1):
         try:
-            print(f"\nProcessing frame {frame_id}...")
-            result = process_frame(frame_id, data_root)
+            print(f"\n[{i}/3] Obrada frame-a {frame_id}...")
+            result = process_frame(frame_id, data_root, show_images=False)
             results.append(result)
-            print(f"✓ Frame {frame_id} completed successfully")
+            print(f"  ✓ Frame {frame_id} je uspješno obrađen")
         except Exception as e:
-            print(f"✗ Error processing frame {frame_id}: {e}")
+            print(f"  ✗ Greška pri obradi frame-a {frame_id}: {e}")
     
     # Create results table
     if results:
         df = pd.DataFrame(results)
         
-        print("\n" + "="*80)
-        print("RESULTS TABLE")
-        print("="*80)
+        print("\n" + "="*90)
+        print("TABLICA REZULTATA")
+        print("="*90)
         print(df.to_string(index=False))
         
         # Save table to CSV
-        output_csv = Path("outputs/head_pose_estimation_01.csv")
+        output_csv = Path("outputs/task1_results.csv")
         output_csv.parent.mkdir(parents=True, exist_ok=True)
         df.to_csv(output_csv, index=False)
-        print(f"\nTable saved to: {output_csv}")
+        print(f"\nTabličnih rezultata pohranjena: {output_csv}")
     
-    print("\n" + "="*80)
-    print("Processing complete!")
-    print("="*80)
+    print("\n" + "="*90)
+    print("Obrada završena! Vizualizacije su sprema u /outputs direktoriju.")
+    print("="*90 + "\n")
 
 
 if __name__ == "__main__":
