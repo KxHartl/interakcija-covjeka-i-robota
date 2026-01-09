@@ -11,51 +11,22 @@ import cv2
 import mediapipe as mp
 import scipy.io
 import numpy as np
+import csv
 import os
 from pathlib import Path
 
 # Konfiguracija
 DATA_DIR = 'data/raw/1137'
 IMAGE_INDICES = [1, 5, 10, 15, 20]  # 5 fotografija: 000001.jpg, 000005.jpg, itd.
-SELECTED_KEYPOINT = 0  # 0 = R ankle (desna gležanj)
+SELECTED_KEYPOINT = 0 
 KEYPOINT_NAMES = {
-    0: "R ankle",
-    1: "R knee",
-    2: "R hip",
-    3: "L hip",
-    4: "L knee",
-    5: "L ankle",
-    6: "Pelvis",
-    7: "Thorax",
-    8: "Upper neck",
-    9: "Head",
-    10: "R wrist",
-    11: "R elbow",
-    12: "R shoulder",
-    13: "L shoulder",
-    14: "L elbow",
-    15: "L wrist"
+    0: "Head",
 }
 
 # Mapiranje PennAction točaka na MediaPipe Pose landmarkove
 # PennAction ima 13 točaka, MediaPipe Pose ima 33 landmarka
 PENNACTION_TO_MEDIAPIPE = {
-    0: mp.solutions.pose.PoseLandmark.RIGHT_ANKLE.value,      # R ankle
-    1: mp.solutions.pose.PoseLandmark.RIGHT_KNEE.value,       # R knee
-    2: mp.solutions.pose.PoseLandmark.RIGHT_HIP.value,        # R hip
-    3: mp.solutions.pose.PoseLandmark.LEFT_HIP.value,         # L hip
-    4: mp.solutions.pose.PoseLandmark.LEFT_KNEE.value,        # L knee
-    5: mp.solutions.pose.PoseLandmark.LEFT_ANKLE.value,       # L ankle
-    6: mp.solutions.pose.PoseLandmark.LEFT_HIP.value,         # Pelvis (aproksimacija)
-    7: mp.solutions.pose.PoseLandmark.NECK.value,             # Thorax (aproksimacija)
-    8: mp.solutions.pose.PoseLandmark.NECK.value,             # Upper neck
-    9: mp.solutions.pose.PoseLandmark.NOSE.value,             # Head
-    10: mp.solutions.pose.PoseLandmark.RIGHT_WRIST.value,     # R wrist
-    11: mp.solutions.pose.PoseLandmark.RIGHT_ELBOW.value,     # R elbow
-    12: mp.solutions.pose.PoseLandmark.RIGHT_SHOULDER.value,  # R shoulder
-    13: mp.solutions.pose.PoseLandmark.LEFT_SHOULDER.value,   # L shoulder
-    14: mp.solutions.pose.PoseLandmark.LEFT_ELBOW.value,      # L elbow
-    15: mp.solutions.pose.PoseLandmark.LEFT_WRIST.value       # L wrist
+    0: mp.solutions.pose.PoseLandmark.NOSE.value,              # Head
 }
 
 
@@ -216,7 +187,7 @@ def main():
     if results:
         # Ispis zaglavlja tablice
         print(f"{'ID Slike':<15} {'GT X':<8} {'GT Y':<8} {'MP X':<8} {'MP Y':<8} "
-              f"{'ΔX':<8} {'ΔY':<8} {'Greška (px)':<15}")
+              f"{' ΔX':<8} {' ΔY':<8} {'Greška (px)':<15}")
         print("-" * 100)
         
         # Ispis redaka tablice
@@ -253,7 +224,7 @@ def main():
         f.write("=" * 80 + "\n\n")
         
         f.write(f"{'ID Slike':<15} {'GT X':<8} {'GT Y':<8} {'MP X':<8} {'MP Y':<8} "
-                f"{'ΔX':<8} {'ΔY':<8} {'Greška (px)':<15}\n")
+                f"{' ΔX':<8} {' ΔY':<8} {'Greška (px)':<15}\n")
         f.write("-" * 100 + "\n")
         
         for r in results:
@@ -272,7 +243,27 @@ def main():
             f.write(f"Std dev: {np.std(errors):.2f} px\n")
             f.write(f"Broj slika: {len(results)}\n")
     
-    print(f"✓ Rezultati su spremi u: {output_file}")
+    print(f"✓ Rezultati su spremljeni u: {output_file}")
+
+    # Spremi rezultate i u CSV format
+    csv_output_file = 'outputs/body_pose_estimation_01_results.csv'
+    with open(csv_output_file, 'w', newline='', encoding='utf-8') as csvf:
+        writer = csv.writer(csvf)
+        # Zaglavlje CSV-a prema zahtjevu
+        writer.writerow(['ID Slike','GT X','GT Y','MP X','MP Y','ΔX','ΔY','Greška (px)'])
+        for r in results:
+            writer.writerow([
+                r['image_id'],
+                r['gt_x'],
+                r['gt_y'],
+                r['mp_x'],
+                r['mp_y'],
+                r['diff_x'],
+                r['diff_y'],
+                f"{r['euclidean_error']:.2f}" if r['euclidean_error'] is not None else ''
+            ])
+
+    print(f"✓ CSV rezultati su spremljeni u: {csv_output_file}")
 
 
 if __name__ == "__main__":
