@@ -266,7 +266,7 @@ def main():
         print(df.to_string(index=False))
         
         # Save table to CSV
-        output_csv = Path("outputs/task1_results.csv")
+        output_csv = Path("outputs/head_pose_estimation_01.csv")
         output_csv.parent.mkdir(parents=True, exist_ok=True)
         df.to_csv(output_csv, index=False)
         print(f"\nTable saved to: {output_csv}")
