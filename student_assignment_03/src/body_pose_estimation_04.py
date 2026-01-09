@@ -21,12 +21,13 @@ from collections import deque
 from datetime import datetime
 
 # Konfiguracija
-COMERA_INDEX = 0  # Kamera laptopa
+CAMERA_INDEX = 0  # Kamera laptopa
 FPS_BUFFER_SIZE = 30  # Broj frame-ova za izračun FPS-a
 
-# Landmarki zapešća
-RIGHT_WRIST = 10
-LEFT_WRIST = 21
+# Landmarki zapešća (MediaPipe indeksi)
+# LEFT_WRIST = 15, RIGHT_WRIST = 16
+RIGHT_WRIST = 16
+LEFT_WRIST = 15
 
 # Kalibracija: pretpostavljamo da je osoba ~30cm od kamere
 # i da zauzima ~60% slike u szerini
@@ -100,12 +101,12 @@ def calculate_velocity(distance_pixels, pixels_to_cm, time_delta_sec):
         float: brzina u cm/s ili m/s
     """
     if time_delta_sec <= 0:
-        return 0
-    
+        return 0.0, 0.0
+
     distance_cm = distance_pixels * pixels_to_cm
     velocity_cm_s = distance_cm / time_delta_sec
     velocity_m_s = velocity_cm_s / 100  # Pretvori u m/s
-    
+
     return velocity_cm_s, velocity_m_s
 
 
@@ -174,14 +175,18 @@ def main():
     # MediaPipe Pose inicijalizacija
     mp_pose = mp.solutions.pose
     
-    # Spremi i aktivne varijable
-    previous_wrist_pos = None
-    previous_time = time.time()
-    
-    # Buferi za statistiku
-    velocity_buffer = deque(maxlen=FPS_BUFFER_SIZE)
+    # Spremi i aktivne varijable (odvojeno za desno i lijevo zapešće)
+    previous_right_wrist_pos = None
+    previous_left_wrist_pos = None
+    previous_right_time = None
+    previous_left_time = None
+
+    # Buferi za statistiku (odvojeno)
+    right_velocity_buffer = deque(maxlen=FPS_BUFFER_SIZE)
+    left_velocity_buffer = deque(maxlen=FPS_BUFFER_SIZE)
     frame_count = 0
     start_time = time.time()
+    previous_time = time.time()
     
     # Rezultati
     results_data = []
@@ -189,10 +194,9 @@ def main():
     print(f"\n" + "=" * 90)
     print("POČINJE SNIMANJE - Pritisnite 'Q' za izlaz")
     print("=" * 90)
-    
+
     with mp_pose.Pose(
         static_image_mode=False,
-        max_num_hands=2,
         smooth_landmarks=True,
         min_detection_confidence=0.5,
         min_tracking_confidence=0.5
@@ -245,11 +249,22 @@ def main():
                     cx, cy = int(landmark.x * w), int(landmark.y * h)
                     cv2.circle(frame_display, (cx, cy), 3, (0, 255, 0), -1)
             
-            # Izračunaj brzine
-            if previous_wrist_pos is not None and right_wrist_pos is not None:
-                distance_pixels = calculate_distance(previous_wrist_pos, right_wrist_pos)
+            # Izračunaj brzine zasebno za desno i lijevo zapešće
+            right_velocity_cm_s, right_velocity_m_s = 0.0, 0.0
+            left_velocity_cm_s, left_velocity_m_s = 0.0, 0.0
+
+            if previous_right_wrist_pos is not None and right_wrist_pos is not None:
+                dt_r = current_time - previous_right_time if previous_right_time is not None else time_delta
+                distance_pixels_r = calculate_distance(previous_right_wrist_pos, right_wrist_pos)
                 right_velocity_cm_s, right_velocity_m_s = calculate_velocity(
-                    distance_pixels, pixels_to_cm, time_delta
+                    distance_pixels_r, pixels_to_cm, dt_r
+                )
+
+            if previous_left_wrist_pos is not None and left_wrist_pos is not None:
+                dt_l = current_time - previous_left_time if previous_left_time is not None else time_delta
+                distance_pixels_l = calculate_distance(previous_left_wrist_pos, left_wrist_pos)
+                left_velocity_cm_s, left_velocity_m_s = calculate_velocity(
+                    distance_pixels_l, pixels_to_cm, dt_l
                 )
             
             # Ispis na frame
@@ -276,6 +291,7 @@ def main():
                 )
             
             # Spremi podatke
+            # Spremi podatke i u odvojene buffere
             if right_wrist_pos is not None:
                 results_data.append({
                     'frame': frame_count,
@@ -284,7 +300,17 @@ def main():
                     'position': right_wrist_pos,
                     'velocity_m_s': right_velocity_m_s
                 })
-                velocity_buffer.append(right_velocity_m_s)
+                right_velocity_buffer.append(right_velocity_m_s)
+
+            if left_wrist_pos is not None:
+                results_data.append({
+                    'frame': frame_count,
+                    'time': current_time - start_time,
+                    'wrist': 'LIJEVO',
+                    'position': left_wrist_pos,
+                    'velocity_m_s': left_velocity_m_s
+                })
+                left_velocity_buffer.append(left_velocity_m_s)
             
             # Prikaži frame
             cv2.imshow('Praćenje zapešća - Brzina gibanja', frame_display)
@@ -295,9 +321,14 @@ def main():
                 print("\n❌ Prekid snimanja...")
                 break
             
-            # Ažuriranje pozicije
-            previous_wrist_pos = right_wrist_pos if right_wrist_pos is not None else previous_wrist_pos
-            previous_time = current_time
+            # Ažuriranje pozicija i vremena za svako zapešće
+            if right_wrist_pos is not None:
+                previous_right_wrist_pos = right_wrist_pos
+                previous_right_time = current_time
+
+            if left_wrist_pos is not None:
+                previous_left_wrist_pos = left_wrist_pos
+                previous_left_time = current_time
     
     # Zatvori kameru
     cap.release()
@@ -314,15 +345,24 @@ def main():
     print(f"  - Ukupno frame-ova: {frame_count}")
     print(f"  - Ukupno vremena: {elapsed_time:.2f}s")
     print(f"  - Prosječni FPS: {frame_count/elapsed_time:.2f}")
-    print(f"  - Broja mjerenja brzine: {len(velocity_buffer)}")
-    
-    if velocity_buffer:
-        velocities = list(velocity_buffer)
-        print(f"\nStatistika brzine zapešća:")
-        print(f"  - Prosječna brzina: {np.mean(velocities):.3f} m/s")
-        print(f"  - Minimalna brzina: {np.min(velocities):.3f} m/s")
-        print(f"  - Maksimalna brzina: {np.max(velocities):.3f} m/s")
-        print(f"  - Standardna devijacija: {np.std(velocities):.3f} m/s")
+    print(f"  - Broj mjerenja brzine (desno): {len(right_velocity_buffer)}")
+    print(f"  - Broj mjerenja brzine (lijevo): {len(left_velocity_buffer)}")
+
+    if right_velocity_buffer:
+        rv = list(right_velocity_buffer)
+        print(f"\nStatistika brzine zapešća (DESNO):")
+        print(f"  - Prosječna brzina: {np.mean(rv):.3f} m/s")
+        print(f"  - Minimalna brzina: {np.min(rv):.3f} m/s")
+        print(f"  - Maksimalna brzina: {np.max(rv):.3f} m/s")
+        print(f"  - Standardna devijacija: {np.std(rv):.3f} m/s")
+
+    if left_velocity_buffer:
+        lv = list(left_velocity_buffer)
+        print(f"\nStatistika brzine zapešća (LIJEVO):")
+        print(f"  - Prosječna brzina: {np.mean(lv):.3f} m/s")
+        print(f"  - Minimalna brzina: {np.min(lv):.3f} m/s")
+        print(f"  - Maksimalna brzina: {np.max(lv):.3f} m/s")
+        print(f"  - Standardna devijacija: {np.std(lv):.3f} m/s")
     
     print(f"\n" + "=" * 90)
     
@@ -354,16 +394,26 @@ def main():
         f.write(f"Ukupno frame-ova: {frame_count}\n")
         f.write(f"Ukupno vremena: {elapsed_time:.2f}s\n")
         f.write(f"Prosječni FPS: {frame_count/elapsed_time:.2f}\n")
-        f.write(f"Broj mjerenja brzine: {len(velocity_buffer)}\n\n")
-        
-        if velocity_buffer:
-            velocities = list(velocity_buffer)
-            f.write("STATISTIKA BRZINE ZAPEŠĆA:\n")
+        f.write(f"Broj mjerenja brzine (desno): {len(right_velocity_buffer)}\n")
+        f.write(f"Broj mjerenja brzine (lijevo): {len(left_velocity_buffer)}\n\n")
+
+        if right_velocity_buffer:
+            rv = list(right_velocity_buffer)
+            f.write("STATISTIKA BRZINE ZAPEŠĆA (DESNO):\n")
             f.write("-" * 50 + "\n")
-            f.write(f"Prosječna brzina: {np.mean(velocities):.3f} m/s\n")
-            f.write(f"Minimalna brzina: {np.min(velocities):.3f} m/s\n")
-            f.write(f"Maksimalna brzina: {np.max(velocities):.3f} m/s\n")
-            f.write(f"Standardna devijacija: {np.std(velocities):.3f} m/s\n\n")
+            f.write(f"Prosječna brzina: {np.mean(rv):.3f} m/s\n")
+            f.write(f"Minimalna brzina: {np.min(rv):.3f} m/s\n")
+            f.write(f"Maksimalna brzina: {np.max(rv):.3f} m/s\n")
+            f.write(f"Standardna devijacija: {np.std(rv):.3f} m/s\n\n")
+
+        if left_velocity_buffer:
+            lv = list(left_velocity_buffer)
+            f.write("STATISTIKA BRZINE ZAPEŠĆA (LIJEVO):\n")
+            f.write("-" * 50 + "\n")
+            f.write(f"Prosječna brzina: {np.mean(lv):.3f} m/s\n")
+            f.write(f"Minimalna brzina: {np.min(lv):.3f} m/s\n")
+            f.write(f"Maksimalna brzina: {np.max(lv):.3f} m/s\n")
+            f.write(f"Standardna devijacija: {np.std(lv):.3f} m/s\n\n")
         
         f.write("DETALJNI PODACI:\n")
         f.write("=" * 90 + "\n")
