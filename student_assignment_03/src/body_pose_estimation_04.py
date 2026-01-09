@@ -6,9 +6,8 @@ Samostalni zadatak 4: Brzina gibanja zapešća iz live feed-a
 - Spremiti rezultate u .txt datoteku
 
 KOMENTARI:
-- Kamera: 30 FPS (tipično)
+- Kamera: 30 FPS
 - Zapešće indeksi: 10 (RIGHT_WRIST), 21 (LEFT_WRIST)
-- Brzina: v = distanca / vrijeme
 - Pretpostavka: ~30cm od kamere do osobe za kalibraciju
 """
 
@@ -103,13 +102,13 @@ def calculate_velocity(distance_pixels, pixels_to_cm, time_delta_sec):
         float: brzina u cm/s ili m/s
     """
     if time_delta_sec <= 0:
-        return 0.0, 0.0
+        return 0.0
 
     distance_cm = distance_pixels * pixels_to_cm
     velocity_cm_s = distance_cm / time_delta_sec
     velocity_m_s = velocity_cm_s / 100  # Pretvori u m/s
 
-    return velocity_cm_s, velocity_m_s
+    return velocity_m_s
 
 
 def get_wrist_position(landmarks, wrist_idx):
@@ -269,7 +268,6 @@ def main():
                     cv2.circle(frame_display, (cx, cy), 3, (0, 255, 0), -1)
 
             # Ako imamo face mesh, pokušaj izračunati iris promjer u pikselima
-            iris_calibrated = False
             if face_results and face_results.multi_face_landmarks:
                 # Uzmemo prvu detektiranu facu
                 fl = face_results.multi_face_landmarks[0]
@@ -306,7 +304,6 @@ def main():
                         # IRIS_DIAMETER_MM -> u cm
                         iris_cm = IRIS_DIAMETER_MM / 10.0
                         pixels_to_cm = iris_cm / measured_d_px
-                        iris_calibrated = True
                         iris_calibrated_any = True
                         # ažuriraj trenutnu konverziju i zabilježi zadnju vrijednost
                         pixels_to_cm_current = pixels_to_cm
@@ -318,23 +315,23 @@ def main():
                             cv2.circle(frame_display, (int(p.x * w), int(p.y * h)), 2, (255, 255, 0), -1)
                         cv2.putText(frame_display, calib_note, (10, frame_height - 20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255,255,0), 2)
                 except Exception:
-                    iris_calibrated = False
+                    pass
             
             # Izračunaj brzine zasebno za desno i lijevo zapešće
-            right_velocity_cm_s, right_velocity_m_s = 0.0, 0.0
-            left_velocity_cm_s, left_velocity_m_s = 0.0, 0.0
+            right_velocity_m_s = 0.0
+            left_velocity_m_s = 0.0
 
             if previous_right_wrist_pos is not None and right_wrist_pos is not None:
                 dt_r = current_time - previous_right_time if previous_right_time is not None else time_delta
                 distance_pixels_r = calculate_distance(previous_right_wrist_pos, right_wrist_pos)
-                right_velocity_cm_s, right_velocity_m_s = calculate_velocity(
+                right_velocity_m_s = calculate_velocity(
                     distance_pixels_r, pixels_to_cm, dt_r
                 )
 
             if previous_left_wrist_pos is not None and left_wrist_pos is not None:
                 dt_l = current_time - previous_left_time if previous_left_time is not None else time_delta
                 distance_pixels_l = calculate_distance(previous_left_wrist_pos, left_wrist_pos)
-                left_velocity_cm_s, left_velocity_m_s = calculate_velocity(
+                left_velocity_m_s = calculate_velocity(
                     distance_pixels_l, pixels_to_cm, dt_l
                 )
             
