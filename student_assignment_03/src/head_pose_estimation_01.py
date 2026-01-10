@@ -2,14 +2,6 @@
 """
 Task 1: Visual interpretation of BIWI Head Pose data
 Author: Krešimir Hartl (Student 24)
-
-Integrated features from src/hpe utilities:
-1. Depth data decoding and visualization (01_depth_info.py)
-2. Position and rotation loading (02_pos_rot_info.py)
-3. 3D perspective axes visualization (03_vis_pos_rot_info.py)
-4. Face mesh landmarks from MediaPipe (04_face_mesh.py)
-5. Enhanced Euler angle visualization and roll gauge
-6. FIX: Translation values logged and displayed for debugging coordinate system shifts
 """
 
 import numpy as np

@@ -1,4 +1,4 @@
-Frame,Pitch (°),Yaw (°),Roll (°),Gaze Direction,Depth Range,Face Landmarks
-50,-20.58,9.65,-3.69,"gleda DOLJE, gleda naprijed, bez nagiba",704 - 1298 mm,478
-150,-73.59,2.81,-2.96,"gleda DOLJE, gleda naprijed, bez nagiba",706 - 1298 mm,0
-250,-30.86,3.38,-3.17,"gleda DOLJE, gleda naprijed, bez nagiba",712 - 1298 mm,468
+Frame,Pitch (°),Yaw (°),Roll (°),"T_mm (X, Y, Z)",Gaze Direction,Depth Range,Face Landmarks
+50,-20.58,9.65,-3.69,"(110.4, -0.6, 940.4)","gleda DOLJE, gleda naprijed, bez nagiba",704 - 1298 mm,478
+150,-73.59,2.81,-2.96,"(121.6, -15.1, 1048.1)","gleda DOLJE, gleda naprijed, bez nagiba",706 - 1298 mm,0
+250,-30.86,3.38,-3.17,"(118.2, 0.9, 983.3)","gleda DOLJE, gleda naprijed, bez nagiba",712 - 1298 mm,0
