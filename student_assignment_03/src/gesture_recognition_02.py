@@ -101,6 +101,9 @@ try:
         if not ret:
             break
 
+        # Zrcaljenje slike - kao ogledalo
+        frame = cv2.flip(frame, 1)
+
         rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
         results = hands.process(rgb_frame)
 
