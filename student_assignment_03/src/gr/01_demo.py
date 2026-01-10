@@ -7,7 +7,7 @@ from mediapipe.tasks.python import vision
 from pathlib import Path
 
 # Putanja do foldera gdje se nalazi .task file
-root = Path(r"data\raw\gr")
+root = Path("./data/raw/gr")
 model_path = root / "gesture_recognizer.task"
 
 # --- Mediapipe setup ---
