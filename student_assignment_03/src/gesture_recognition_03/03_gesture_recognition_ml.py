@@ -5,7 +5,7 @@ import numpy as np
 import os
 
 print("\n" + "="*60)
-print("REAL-TIME GESTURE RECOGNITION - ML MODEL (IMPROVED)")
+print("REAL-TIME GESTURE RECOGNITION - SVM MODEL")
 print("="*60)
 
 # Provjeri da li model datoteke postoje
@@ -23,7 +23,7 @@ if not os.path.exists(model_path) or not os.path.exists(scaler_path):
 print(f"\n1. Ucitavanje modela...")
 with open(model_path, 'rb') as f:
     model = pickle.load(f)
-print(f"   ✓ Model ucitan")
+print(f"   ✓ SVM Model ucitan")
 
 with open(scaler_path, 'rb') as f:
     scaler = pickle.load(f)
@@ -52,10 +52,9 @@ print("Press ESC ili 'q' za izlaz")
 print(f"{'='*60}\n")
 
 # ========== VALIDACIJSKI PRAGOVI ==========
-MIN_CONFIDENCE_THRESHOLD = 0.75  # Minimum 75% sigurnosti za predikciju
+MIN_CONFIDENCE_THRESHOLD = 0.72  # Minimum 72% sigurnosti za predikciju
 MIN_CLASS_PROBABILITY_GAP = 0.15  # Razlika između top 2 klase mora biti >15%
 CONFIDENCE_BUFFER_SIZE = 8       # Trebaj 8 uzastopnih frameova prije prikaza
-GEST_VALIDATION_THRESHOLD = 0.85  # Minimum 85% za validaciju geste
 
 # ========== HELPER FUNKCIJA ZA VALIDACIJU GESTE ==========
 def validate_gesture(hand_landmarks):
@@ -99,13 +98,13 @@ def validate_gesture(hand_landmarks):
         return True
         
     except Exception as e:
-        print(f"Validacija greška: {e}")
         return False
 
 
 def check_confidence_quality(confidence_scores):
     """
-    Provjeri je li model dovoljno siguran u svoju predikciju.
+    Provjeri je li SVM model dovoljno siguran u svoju predikciju.
+    SVM koristi decision function pa je calibration bolji sa probability=True parametrom.
     """
     sorted_scores = np.sort(confidence_scores)[::-1]
     max_confidence = sorted_scores[0]
@@ -137,11 +136,11 @@ try:
 
         # Prikaži header
         cv2.rectangle(frame, (0, 0), (w, 120), (0, 0, 0), -1)
-        cv2.putText(frame, "Real-time Gesture Recognition (ML Model + Validation)",
+        cv2.putText(frame, "Real-time Gesture Recognition (SVM Model + Validation)",
                    (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (255, 255, 255), 2)
         cv2.putText(frame, "Geste: THUMBS_UP, THUMBS_DOWN",
                    (10, 60), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 255), 1)
-        cv2.putText(frame, f"Confidence threshold: {MIN_CONFIDENCE_THRESHOLD*100:.0f}% | Gap: {MIN_CLASS_PROBABILITY_GAP*100:.0f}%",
+        cv2.putText(frame, f"Model: SVM (RBF) | Confidence: {MIN_CONFIDENCE_THRESHOLD*100:.0f}% | Gap: {MIN_CLASS_PROBABILITY_GAP*100:.0f}%",
                    (10, 90), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (200, 200, 200), 1)
 
         gesture_detected = False
@@ -159,7 +158,7 @@ try:
                 # KORAK 3: Normalizacija
                 features_scaled = scaler.transform([features])
 
-                # KORAK 4: Predikcija
+                # KORAK 4: Predikcija sa SVM
                 prediction = model.predict(features_scaled)[0]
                 confidence_scores = model.predict_proba(features_scaled)[0]
                 max_confidence = max(confidence_scores)
@@ -242,7 +241,7 @@ try:
             cv2.putText(frame, "No hand detected", (w//2-150, h//2),
                        cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
 
-        cv2.imshow("Gesture Recognition - ML Model (THUMBS UP/DOWN) with Validation", frame)
+        cv2.imshow("Gesture Recognition - SVM Model (THUMBS UP/DOWN) with Validation", frame)
 
         key = cv2.waitKey(1) & 0xFF
         if key == 27 or key == ord('q'):
