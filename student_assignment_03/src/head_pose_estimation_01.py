@@ -159,11 +159,11 @@ def process_frames(frame_ids: list, data_root: Path):
             # Save image
             output_dir = Path("outputs")
             output_dir.mkdir(exist_ok=True)
-            output_img_path = output_dir / f"frame_{frame_id:05d}_euler.png"
+            output_img_path = output_dir / f"head_pose_estimation_01_frame_{frame_id:05d}.png"
             cv2.imwrite(str(output_img_path), img_axes)
             
             # Display image
-            cv2.imshow(f"Frame {frame_id} - Euler kutovi", img_axes)
+            cv2.imshow(f"Frame {frame_id}", img_axes)
             print(f"     Pritisnite bilo koju tipku za nastavak...")
             cv2.waitKey(0)
             cv2.destroyAllWindows()
@@ -175,12 +175,12 @@ def process_frames(frame_ids: list, data_root: Path):
     if results:
         df = pd.DataFrame(results)
         
-        output_path = Path("outputs") / "euler_angles.csv"
+        output_path = Path("outputs") / "head_pose_estimation_01.csv"
         output_path.parent.mkdir(exist_ok=True)
         df.to_csv(output_path, index=False)
         
         print("\n" + "="*100)
-        print(f"REZULTATI (pohranjen u euler_angles.csv):")
+        print(f"REZULTATI (pohranjen u head_pose_estimation_01.csv):")
         print("="*100)
         print(df.to_string(index=False))
         print(f"\n✓ CSV pohranjen: {output_path}")
@@ -200,11 +200,10 @@ if __name__ == "__main__":
         exit(1)
     
     # Frames to process
-    frame_ids = [50, 150, 250]
+    frame_ids = [50, 350, 508]
     
     print("\n" + "="*100)
     print("EKSTRAKCIJA EULER KUTOVA IZ BIWI DATASETA")
-    print("Minimal modificirana verzija 03_vis_pos_rot_info.py")
     print("Student: Krešimir Hartl (24)")
     print("="*100)
     
