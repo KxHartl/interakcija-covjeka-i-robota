@@ -2,12 +2,13 @@ import pandas as pd
 import pickle
 import os
 from sklearn.preprocessing import StandardScaler
-from sklearn.neighbors import KNeighborsClassifier
+from sklearn.svm import SVC
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import accuracy_score, classification_report, confusion_matrix
 
 print("\n" + "="*60)
-print("ML MODEL TRAINING - THUMBS UP vs THUMBS DOWN")
+print("ML MODEL TRAINING - SVM CLASSIFIER")
+print("THUMBS UP vs THUMBS DOWN")
 print("="*60)
 
 # Provjeri da li CSV datoteka postoji
@@ -46,17 +47,25 @@ X_train_scaled = scaler.fit_transform(X_train)
 X_test_scaled = scaler.transform(X_test)
 print(f"   ✓ Normalizacija zavrsena")
 
-# Treniranje KNN modela
-print(f"\n5. Treniranje KNN modela (n_neighbors=3)...")
-model = KNeighborsClassifier(n_neighbors=3)
+# Treniranje SVM modela
+print(f"\n5. Treniranje SVM modela (RBF kernel)...")
+print(f"   Parametri: kernel='rbf', C=1.0, gamma='scale', probability=True")
+model = SVC(kernel='rbf', C=1.0, gamma='scale', probability=True, random_state=42)
 model.fit(X_train_scaled, y_train)
 print(f"   ✓ Treniranje zavrseno")
+print(f"   Broj support vectors: {len(model.support_vectors_)}")
+
+# Evaluacija na train setu
+print(f"\n6. Evaluacija na TRAIN setu:")
+y_train_pred = model.predict(X_train_scaled)
+train_accuracy = accuracy_score(y_train, y_train_pred)
+print(f"   Train Accuracy: {train_accuracy:.2%}")
 
 # Evaluacija na test setu
-print(f"\n6. Evaluacija modela:")
+print(f"\n7. Evaluacija na TEST setu:")
 y_pred = model.predict(X_test_scaled)
 accuracy = accuracy_score(y_test, y_pred)
-print(f"   Accuracy: {accuracy:.2%}")
+print(f"   Test Accuracy: {accuracy:.2%}")
 print(f"\n   Classification Report:")
 print(classification_report(
     y_test, y_pred,
@@ -64,10 +73,13 @@ print(classification_report(
 ))
 
 print(f"\n   Confusion Matrix:")
-print(confusion_matrix(y_test, y_pred))
+cm = confusion_matrix(y_test, y_pred)
+print(cm)
+print(f"   True Negatives: {cm[0,0]}, False Positives: {cm[0,1]}")
+print(f"   False Negatives: {cm[1,0]}, True Positives: {cm[1,1]}")
 
 # Spremi model i scaler
-print(f"\n7. Spremi model i scaler...")
+print(f"\n8. Spremi model i scaler...")
 model_path = 'gesture_model.pkl'
 scaler_path = 'scaler.pkl'
 
@@ -81,4 +93,7 @@ print(f"   ✓ Scaler spremi: {scaler_path}")
 
 print(f"\n{'='*60}")
 print("✓ TRENIRANJE ZAVRSENO!")
+print(f"  Model tip: SVM (Support Vector Machine)")
+print(f"  Kernel: RBF (Radial Basis Function)")
+print(f"  Test Accuracy: {accuracy:.2%}")
 print(f"{'='*60}\n")
