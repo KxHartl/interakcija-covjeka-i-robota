@@ -91,18 +91,65 @@ def get_mediapipe_landmarks(image_rgb):
     
     Prema vjezbe.pdf - 04_face_mesh.py
     """
+    # Primary attempt using the global face_mesh
     results = face_mesh.process(image_rgb)
-    
-    if not results.multi_face_landmarks:
-        return None
-    
-    face = results.multi_face_landmarks[0]
-    landmarks = []
-    
-    for lm in face.landmark:
-        landmarks.append((lm.x, lm.y, lm.z))
-    
-    return landmarks
+    if results and results.multi_face_landmarks:
+        face = results.multi_face_landmarks[0]
+        return [(lm.x, lm.y, lm.z) for lm in face.landmark]
+
+    # Fallback strategies: try scaling up, flipping, and lower detection confidence
+    h, w, _ = image_rgb.shape
+
+    # Try scaled-up images (helps if face is small)
+    for scale in (1.5, 2.0):
+        try:
+            resized = cv2.resize(image_rgb, (int(w * scale), int(h * scale)), interpolation=cv2.INTER_LINEAR)
+            results = face_mesh.process(resized)
+            if results and results.multi_face_landmarks:
+                face = results.multi_face_landmarks[0]
+                # landmarks are normalized; they map to the original image consistently
+                return [(lm.x, lm.y, lm.z) for lm in face.landmark]
+        except Exception:
+            pass
+
+    # Try horizontally flipped image (face turned away might be better detected flipped)
+    try:
+        flipped = cv2.flip(image_rgb, 1)
+        results = face_mesh.process(flipped)
+        if results and results.multi_face_landmarks:
+            face = results.multi_face_landmarks[0]
+            # When flipped, x coordinates are relative to flipped image; convert x -> 1 - x
+            landmarks = []
+            for lm in face.landmark:
+                landmarks.append((1.0 - lm.x, lm.y, lm.z))
+            return landmarks
+    except Exception:
+        pass
+
+    # Try a temporary FaceMesh with lower detection confidence
+    try:
+        with mp_face_mesh.FaceMesh(static_image_mode=True, max_num_faces=1, refine_landmarks=True,
+                                   min_detection_confidence=0.35) as fm_low:
+            results = fm_low.process(image_rgb)
+            if results and results.multi_face_landmarks:
+                face = results.multi_face_landmarks[0]
+                return [(lm.x, lm.y, lm.z) for lm in face.landmark]
+
+            # Also try scaled versions with the lower-confidence detector
+            for scale in (1.5, 2.0):
+                try:
+                    resized = cv2.resize(image_rgb, (int(w * scale), int(h * scale)), interpolation=cv2.INTER_LINEAR)
+                    results = fm_low.process(resized)
+                    if results and results.multi_face_landmarks:
+                        face = results.multi_face_landmarks[0]
+                        return [(lm.x, lm.y, lm.z) for lm in face.landmark]
+                except Exception:
+                    pass
+    except Exception:
+        pass
+
+    # No face found after fallbacks
+    return None
 
 
 def denormalize_landmark(lm_norm, image_shape):
@@ -120,7 +167,7 @@ def denormalize_landmark(lm_norm, image_shape):
     return x, y, z
 
 
-def calculate_head_pose_mediapipe(landmarks, image_shape):
+def calculate_head_pose_mediapipe(landmarks, image_shape, head_T_mm=None):
     """
     Izračunati head pose iz MediaPipe Face Mesh landmarka.
     
@@ -139,50 +186,142 @@ def calculate_head_pose_mediapipe(landmarks, image_shape):
     """
     
     if landmarks is None or len(landmarks) < 264:
-        return None, None, None
+        return None, None, None, None
     
     h, w, _ = image_shape
-    
+
     # Definiranje ključnih točaka - prema vjezbe.pdf zadatku 3
     left_eye = np.array(landmarks[33])      # (x_norm, y_norm, z_norm)
     right_eye = np.array(landmarks[263])    # (x_norm, y_norm, z_norm)
     nose = np.array(landmarks[1])           # (x_norm, y_norm, z_norm)
     forehead = np.array(landmarks[168])     # čelo za z-os
-    
-    # Denormalizacija
-    le_px, le_py, le_z = denormalize_landmark(left_eye, image_shape)
-    re_px, re_py, re_z = denormalize_landmark(right_eye, image_shape)
-    n_px, n_py, n_z = denormalize_landmark(nose, image_shape)
-    f_px, f_py, f_z = denormalize_landmark(forehead, image_shape)
-    
-    # X-os: vektor između očiju (desni - lijevi)
-    x_axis = np.array([re_px - le_px, re_py - le_py, re_z - le_z])
+
+    # If BIWI head translation provided, use its Z as approximate depth (mm)
+    if head_T_mm is not None:
+        depth_mm = float(head_T_mm[2]) if len(head_T_mm) > 2 else 1000.0
+    else:
+        depth_mm = 1000.0
+
+    # Helper: map normalized landmark to camera coordinates (millimetres)
+    cx = K[0, 2]
+    cy = K[1, 2]
+    fx = K[0, 0]
+    fy = K[1, 1]
+
+    def lm_to_camera(lm):
+        u = lm[0] * w
+        v = lm[1] * h
+        Z = depth_mm
+        X = (u - cx) * Z / fx
+        Y = (v - cy) * Z / fy
+        return np.array([X, Y, Z])
+
+    le_cam = lm_to_camera(left_eye)
+    re_cam = lm_to_camera(right_eye)
+    n_cam = lm_to_camera(nose)
+    f_cam = lm_to_camera(forehead)
+
+    # X-axis: vector from left eye to right eye (left->right)
+    x_axis = re_cam - le_cam
     x_axis = x_axis / (np.linalg.norm(x_axis) + 1e-8)
-    
-    # Z-os: vektor od nosa prema čelu (okomita komponenta na ravninu lica)
-    # U stvarnosti trebao bi vektor iz lica prema kameri, ali estimiramo iz čela
-    z_axis = np.array([f_px - n_px, f_py - n_py, f_z - n_z])
+
+    # Compute face plane normal by fitting a plane to the MediaPipe face landmarks (SVD)
+    # This is more robust than using only forehead+nose, and avoids degenerate normals.
+    face_points_cam = []
+    for lm in landmarks:
+        p_cam = lm_to_camera(np.array(lm))
+        face_points_cam.append(p_cam)
+    face_points_cam = np.vstack(face_points_cam)
+
+    # Center and compute SVD; normal is the singular vector with smallest singular value
+    centroid = face_points_cam.mean(axis=0)
+    A = face_points_cam - centroid
+    try:
+        _, _, VT = np.linalg.svd(A, full_matrices=False)
+        face_normal = VT[-1, :]
+    except Exception:
+        # fallback to simple cross product if SVD fails
+        face_normal = np.cross(re_cam - le_cam, n_cam - le_cam)
+    face_normal = face_normal / (np.linalg.norm(face_normal) + 1e-8)
+
+    # Z-axis: point into the head (invert surface normal)
+    z_axis = -face_normal
     z_axis = z_axis / (np.linalg.norm(z_axis) + 1e-8)
-    
-    # Y-os: cross product z-os × x-os
+
+    # Make X orthogonal to Z
+    x_axis = x_axis - np.dot(x_axis, z_axis) * z_axis
+    x_axis = x_axis / (np.linalg.norm(x_axis) + 1e-8)
+
+    # Y-axis: cross product to complete right-handed basis
     y_axis = np.cross(z_axis, x_axis)
     y_axis = y_axis / (np.linalg.norm(y_axis) + 1e-8)
-    
-    # Ako je y-os invalidna, recalculate
-    if np.linalg.norm(y_axis) < 0.1:
-        # Alternativni pristup: z-os je okomita na x-os
-        z_axis = np.cross(x_axis, np.array([0, 1, 0]))
-        z_axis = z_axis / (np.linalg.norm(z_axis) + 1e-8)
+
+    # Ensure Y points downward in camera coordinates (positive Y = down in image)
+    if y_axis[1] < 0:
+        y_axis = -y_axis
+
+    # Ensure X points to the subject's right (positive camera X).
+    # If not, flip X and rebuild orthonormal basis so handedness is preserved.
+    if x_axis[0] < 0:
+        x_axis = -x_axis
+        # rebuild Y from Z and new X, then ensure Y is downwards
         y_axis = np.cross(z_axis, x_axis)
         y_axis = y_axis / (np.linalg.norm(y_axis) + 1e-8)
-    
-    # Konstituiranje rotacijske matrice iz osi
+        if y_axis[1] < 0:
+            y_axis = -y_axis
+
+    # Recompute Z to ensure perfect orthogonality
+    z_axis = np.cross(x_axis, y_axis)
+    z_axis = z_axis / (np.linalg.norm(z_axis) + 1e-8)
+
+    # Rotation matrix: columns are axes in camera coords
     R_mp = np.column_stack([x_axis, y_axis, z_axis])
-    
-    # Konverzija u Eulerove kutove
-    pitch_mp, yaw_mp, roll_mp = rotmat_to_euler_xyz(R_mp)
-    
-    return pitch_mp, yaw_mp, roll_mp
+
+    # Attempt solvePnP using a small canonical 3D face model and selected 2D image points
+    # Selected MediaPipe landmark indices: nose(1), chin(152), left eye outer(33), right eye outer(263),
+    # left mouth(61), right mouth(291)
+    try:
+        obj_pts = np.array([
+            [0.0, 0.0, 0.0],          # Nose tip
+            [0.0, -63.6, -12.5],      # Chin
+            [-43.3, 32.7, -26.0],     # Left eye outer
+            [43.3, 32.7, -26.0],      # Right eye outer
+            [-28.9, -28.9, -10.0],    # Left mouth corner
+            [28.9, -28.9, -10.0],     # Right mouth corner
+        ], dtype=np.float32)
+
+        img_pts_idx = [1, 152, 33, 263, 61, 291]
+        img_pts = []
+        for idx in img_pts_idx:
+            lm = landmarks[idx]
+            u = lm[0] * w
+            v = lm[1] * h
+            img_pts.append([u, v])
+        img_pts = np.array(img_pts, dtype=np.float32)
+
+        dist_coeffs = np.zeros((4, 1), dtype=np.float32)
+        success, rvec, tvec = cv2.solvePnP(obj_pts, img_pts, K, dist_coeffs, flags=cv2.SOLVEPNP_ITERATIVE)
+        if success:
+            R_sol, _ = cv2.Rodrigues(rvec)
+            # Convert to BIWI Euler angles convention
+            pitch_mp, yaw_mp, roll_mp = rotmat_to_euler_xyz(R_sol)
+            # origin in camera coords from tvec (tvec is in same units as obj_pts -> mm)
+            origin_mp = tvec.flatten()
+        else:
+            raise RuntimeError("solvePnP failed")
+    except Exception:
+        # Fallback to previous axis-based rotation matrix
+        try:
+            pitch_mp, yaw_mp, roll_mp = rotmat_to_euler_xyz(R_mp)
+        except Exception:
+            pitch_mp = math.degrees(math.atan2(-z_axis[1], math.sqrt(z_axis[0]**2 + z_axis[2]**2)))
+            yaw_mp = math.degrees(math.atan2(z_axis[0], z_axis[2]))
+            roll_mp = math.degrees(math.atan2(x_axis[1], x_axis[0]))
+
+    # origin for MediaPipe axes: use nose point in camera coords
+    origin_mp = n_cam
+
+    return pitch_mp, yaw_mp, roll_mp, (R_mp, origin_mp)
 
 
 def project_point(P):
@@ -296,12 +435,13 @@ def process_frames_comparison(frame_ids: list, data_root: Path):
                 print(f"  ✗ Frame {frame_id}: MediaPipe nije pronašao lice")
                 continue
             
-            pitch_mp, yaw_mp, roll_mp = calculate_head_pose_mediapipe(landmarks_mp, img.shape)
-            
-            if pitch_mp is None:
+            pitch_mp_res = calculate_head_pose_mediapipe(landmarks_mp, img.shape, head_T_mm=T_mm)
+            if pitch_mp_res is None:
                 print(f"  ✗ Frame {frame_id}: Nije moguće izračunati MediaPipe kutove")
                 continue
-            
+
+            pitch_mp, yaw_mp, roll_mp, mp_pose = pitch_mp_res
+            R_mp, origin_mp = mp_pose
             # Izračun razlike
             pitch_diff = abs(pitch_biwi - pitch_mp)
             yaw_diff = abs(yaw_biwi - yaw_mp)
@@ -333,8 +473,15 @@ def process_frames_comparison(frame_ids: list, data_root: Path):
             img_vis = draw_mediapipe_landmarks(img_vis, landmarks_mp, img_vis.shape)
             
             # Nacrtaj BIWI osi
-            img_vis = draw_axes_perspective(img_vis, R_biwi, T_mm, 
-                                           axis_len_mm=200, color_label="BIWI GT")
+            img_vis = draw_axes_perspective(img_vis, R_biwi, T_mm,
+                                           axis_len_mm=200, color_label="BIWI")
+
+            # Nacrtaj MediaPipe osi (ako imamo rotaciju i origin)
+            try:
+                img_vis = draw_axes_perspective(img_vis, R_mp, origin_mp,
+                                               axis_len_mm=200, color_label="MP")
+            except Exception:
+                pass
             
             # Dodaj tekstualne informacije
             y_offset = 40
