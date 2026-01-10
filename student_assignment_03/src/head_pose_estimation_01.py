@@ -2,6 +2,18 @@
 """
 Task 1: Visual interpretation of BIWI Head Pose data
 Author: Krešimir Hartl (Student 24)
+
+Integrated features from src/hpe utilities:
+1. Depth data decoding and visualization (01_depth_info.py)
+2. Position and rotation loading (02_pos_rot_info.py)
+3. 3D perspective axes visualization (03_vis_pos_rot_info.py)
+4. Face mesh landmarks from MediaPipe (04_face_mesh.py)
+5. Enhanced Euler angle visualization and roll gauge
+
+CALIBRATION FIX v3:
+- Added camera origin (0,0,0) as reference point
+- Shows both where axes start and where camera is located
+- T is displayed relative to camera
 """
 
 import numpy as np
@@ -66,22 +78,19 @@ def load_biwi_pose_txt(path: str) -> Tuple[np.ndarray, np.ndarray]:
     """
     Load rotation matrix and translation from BIWI pose.txt file (from 02_pos_rot_info.py).
     
-    CRITICAL: 02_pos_rot_info.py returns T in METERS, but this function
-    needs to convert to MILLIMETERS for visualization consistency.
-    
     Returns:
         R: 3x3 rotation matrix
-        T_mm: translation in millimeters (3,)
+        T: translation vector as stored in file (likely in mm)
     """
     data = np.loadtxt(path)
     
     if data.shape != (4, 3):
         raise ValueError(f"Unexpected shape of pose file {path}: {data.shape}")
     
-    R = data[:3, :]                 # 3x3 rotation matrix
-    T_mm = data[3, :]               # translation in mm (as stored in file)
+    R = data[:3, :]     # 3x3 rotation matrix
+    T = data[3, :]      # translation vector
     
-    return R.astype(np.float32), T_mm.astype(np.float32)
+    return R.astype(np.float32), T.astype(np.float32)
 
 
 def rotmat_to_euler_xyz(R: np.ndarray) -> np.ndarray:
@@ -118,11 +127,12 @@ def project_point(P: np.ndarray) -> Tuple[int, int]:
     Project 3D point in camera space to 2D image coordinates (from 03_vis_pos_rot_info.py).
     Uses camera intrinsics matrix K.
     
-    P: Point in 3D camera space in MILLIMETERS
+    P: Point in 3D camera space
+    Returns: (u, v) image coordinates or (320, 240) if behind camera
     """
     p = K @ P
     z = p[2]
-    if z == 0 or z < 0.001:  # Avoid division by zero and negative z
+    if z <= 0.001:  # Behind or too close to camera
         return 320, 240  # Return image center as fallback
     u = p[0] / z
     v = p[1] / z
@@ -152,29 +162,31 @@ def get_face_landmarks(img: np.ndarray) -> List[Tuple[int, int]]:
 # VISUALIZATION FUNCTIONS
 # ============================================================================
 
-def draw_axes_on_image(img: np.ndarray, R: np.ndarray, T_mm: np.ndarray,
-                       axis_len_mm: float = 200.0) -> np.ndarray:
+def draw_axes_on_image(img: np.ndarray, R: np.ndarray, T: np.ndarray,
+                       axis_len: float = 200.0) -> np.ndarray:
     """
     Draw 3D coordinate axes on the image based on head pose (from 03_vis_pos_rot_info.py).
     
-    CRITICAL: T_mm MUST be in millimeters for correct projection!
+    Now with dual reference points:
+    - RED CROSS: Camera origin (0, 0, 0) - reference point
+    - CYAN CIRCLE: Head center - where T points to
     
     X-axis: red (lateral/right)
     Y-axis: green (vertical/up)
     Z-axis: blue (forward/out of head)
     """
-    # Origin of local head coordinate system (in mm)
-    P0 = T_mm.astype(np.float32)
+    # T represents translation from camera to head (head position in camera space)
+    P0 = T.astype(np.float32)
 
     # Local head axes (columns of rotation matrix)
     x_axis = R[:, 0].astype(np.float32)
     y_axis = R[:, 1].astype(np.float32)
     z_axis = R[:, 2].astype(np.float32)
 
-    # Axis endpoints in camera space (millimetres)
-    PX = P0 + axis_len_mm * x_axis
-    PY = P0 + axis_len_mm * y_axis
-    PZ = P0 + axis_len_mm * z_axis
+    # Axis endpoints in camera space
+    PX = P0 + axis_len * x_axis
+    PY = P0 + axis_len * y_axis
+    PZ = P0 + axis_len * z_axis
     
     # Project to 2D image coordinates
     u0, v0 = project_point(P0)
@@ -182,17 +194,30 @@ def draw_axes_on_image(img: np.ndarray, R: np.ndarray, T_mm: np.ndarray,
     uy, vy = project_point(PY)
     uz, vz = project_point(PZ)
     
+    # Also project camera origin for reference
+    camera_origin = np.array([0, 0, 0.001], dtype=np.float32)  # Use small z to avoid division by zero
+    u_cam, v_cam = project_point(camera_origin)
+    
     # Draw on image
     img_with_axes = img.copy()
     
     # Draw semi-transparent background for legend area
     overlay = img_with_axes.copy()
-    cv2.rectangle(overlay, (5, 5), (420, 120), (0, 0, 0), -1)
+    cv2.rectangle(overlay, (5, 5), (450, 140), (0, 0, 0), -1)
     cv2.addWeighted(overlay, 0.3, img_with_axes, 0.7, 0, img_with_axes)
     
-    # Draw center point (head position)
-    cv2.circle(img_with_axes, (u0, v0), 6, (0, 255, 255), -1)
-    cv2.circle(img_with_axes, (u0, v0), 8, (0, 255, 255), 2)
+    # Draw camera origin as reference (RED CROSS)
+    cross_size = 15
+    cv2.line(img_with_axes, (u_cam - cross_size, v_cam), (u_cam + cross_size, v_cam),
+             (0, 0, 255), 2)  # Horizontal
+    cv2.line(img_with_axes, (u_cam, v_cam - cross_size), (u_cam, v_cam + cross_size),
+             (0, 0, 255), 2)  # Vertical
+    cv2.putText(img_with_axes, 'CAM', (u_cam + 10, v_cam - 5), cv2.FONT_HERSHEY_SIMPLEX,
+                0.4, (0, 0, 255), 1)
+    
+    # Draw head center point (CYAN CIRCLE)
+    cv2.circle(img_with_axes, (u0, v0), 8, (0, 255, 255), -1)
+    cv2.circle(img_with_axes, (u0, v0), 10, (0, 255, 255), 2)
     
     # Draw axes with thicker lines for better visibility
     cv2.line(img_with_axes, (u0, v0), (ux, vx), (0, 0, 255), 4)    # X – red
@@ -208,7 +233,6 @@ def draw_axes_on_image(img: np.ndarray, R: np.ndarray, T_mm: np.ndarray,
         if length > 10:
             dx /= length
             dy /= length
-            # Perpendicular vectors for arrow head
             px, py = -dy, dx
             arrow_size = 15
             p1 = (int(pt_end[0] - arrow_size*dx - arrow_size*px),
@@ -221,7 +245,7 @@ def draw_axes_on_image(img: np.ndarray, R: np.ndarray, T_mm: np.ndarray,
     draw_arrow_head(img_with_axes, (u0, v0), (uy, vy), (0, 255, 0))
     draw_arrow_head(img_with_axes, (u0, v0), (uz, vz), (255, 0, 0))
     
-    # Add axis labels with background
+    # Add axis labels
     cv2.putText(img_with_axes, 'X', (ux + 10, vx + 5), cv2.FONT_HERSHEY_SIMPLEX,
                 1.0, (0, 0, 255), 3, cv2.LINE_AA)
     cv2.putText(img_with_axes, 'Y', (uy + 10, vy - 5), cv2.FONT_HERSHEY_SIMPLEX,
@@ -234,19 +258,20 @@ def draw_axes_on_image(img: np.ndarray, R: np.ndarray, T_mm: np.ndarray,
     legend_y = 25
     cv2.putText(img_with_axes, 'Koordinatni sustav:', (legend_x, legend_y),
                 cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 2)
-    cv2.putText(img_with_axes, 'X (crvena) - desna-lijeva os',
+    cv2.putText(img_with_axes, 'X (crvena) - desna-lijeva',
                 (legend_x, legend_y + 25), cv2.FONT_HERSHEY_SIMPLEX,
                 0.5, (0, 0, 255), 1)
-    cv2.putText(img_with_axes, 'Y (zelena) - gore-dolje os',
+    cv2.putText(img_with_axes, 'Y (zelena) - gore-dolje',
                 (legend_x, legend_y + 45), cv2.FONT_HERSHEY_SIMPLEX,
                 0.5, (0, 255, 0), 1)
     cv2.putText(img_with_axes, 'Z (plava) - naprijed-natrag',
                 (legend_x, legend_y + 65), cv2.FONT_HERSHEY_SIMPLEX,
                 0.5, (255, 0, 0), 1)
-    
-    # Add translation info
-    cv2.putText(img_with_axes, f'T: ({T_mm[0]:.0f}, {T_mm[1]:.0f}, {T_mm[2]:.0f}) mm',
+    cv2.putText(img_with_axes, 'CAM (crveni X) - kamera (0,0,0)',
                 (legend_x, legend_y + 85), cv2.FONT_HERSHEY_SIMPLEX,
+                0.5, (0, 0, 255), 1)
+    cv2.putText(img_with_axes, f'T = ({T[0]:.0f}, {T[1]:.0f}, {T[2]:.0f})',
+                (legend_x, legend_y + 105), cv2.FONT_HERSHEY_SIMPLEX,
                 0.45, (180, 180, 180), 1)
     
     return img_with_axes
@@ -414,8 +439,8 @@ def process_frame(frame_num: int, data_root: Path, show_images: bool = False) ->
     if img is None:
         raise ValueError(f"Could not load image: {rgb_path}")
     
-    # Load pose data - T_mm is already in millimeters from the file!
-    R, T_mm = load_biwi_pose_txt(str(pose_path))
+    # Load pose data
+    R, T = load_biwi_pose_txt(str(pose_path))
     
     # Load depth data if available
     depth_mm = None
@@ -436,7 +461,7 @@ def process_frame(frame_num: int, data_root: Path, show_images: bool = False) ->
     gaze_desc = describe_gaze_direction(pitch, yaw, roll)
     
     # Create visualization with axes
-    img_with_axes = draw_axes_on_image(img, R, T_mm, axis_len_mm=200)
+    img_with_axes = draw_axes_on_image(img, R, T, axis_len=200)
     
     # Add Euler angle visualization
     img_with_viz = add_euler_visualization(img_with_axes, pitch, yaw, roll)
@@ -477,7 +502,7 @@ def process_frame(frame_num: int, data_root: Path, show_images: bool = False) ->
         "Pitch (°)": f"{pitch:.2f}",
         "Yaw (°)": f"{yaw:.2f}",
         "Roll (°)": f"{roll:.2f}",
-        "T_mm (X, Y, Z)": f"({T_mm[0]:.1f}, {T_mm[1]:.1f}, {T_mm[2]:.1f})",
+        "T (X, Y, Z)": f"({T[0]:.1f}, {T[1]:.1f}, {T[2]:.1f})",
         "Gaze Direction": gaze_desc,
         "Depth Range": depth_info,
         "Face Landmarks": n_landmarks
@@ -502,8 +527,6 @@ def main():
     print("\n" + "="*130)
     print("ZADATAK 1: Vizualna Interpretacija BIWI Head Pose Podataka sa HPE Utilities")
     print("Student: Krešimir Hartl (24)")
-    print("Integrirane funkcionalnosti: Depth, FaceMesh, Pose, Euler kutovi, Roll gauge")
-    print("\nKALIBRACIJA FIKSNA: T vrijednosti su sada ispravno postavljene u MILLIMETRIMA!")
     print("="*130)
     
     results = []
@@ -533,22 +556,20 @@ def main():
         print(f"\nTabličnih rezultata pohranjena: {output_csv}")
     
     print("\n" + "="*130)
-    print("KALIBRACIJA - OBJAŠNJENJE PROBLEMA I RJEŠENJA:")
+    print("KALIBRACIJA - DEBUG INFORMACIJE:")
     print("="*130)
-    print("""PROBLEM:
-  - 02_pos_rot_info.py vraća T u METRIMA (prema kodu: T_m = T_mm / 1000.0)
-  - 03_vis_pos_rot_info.py očekuje T u MILLIMETRIMA
-  - To je dovelo do toga da koordinatni sustav bude pogrešno posložen
+    print("""
+VIZUALIZACIJA SUSTAVA:
+- Crvenni X: Kamera (0, 0, 0) - referentna točka
+- Cyan kružnica: Glava - gdje T pokazuje
+- Crvena os (X): Desna-lijeva
+- Zelena os (Y): Gore-dolje  
+- Plava os (Z): Naprijed-natrag
 
-RJEŠENJE:
-  - load_biwi_pose_txt() sada direktno čita T iz datoteke (u mm)
-  - Nema konverzije u metre i nazad
-  - project_point() dobija T_mm direktno
-  - Sada je koordinatni sustav ispravno kalibriran!
-
-RESULTAT:
-  - Koordinatni sustav se pojavljuje na ispravnoj poziciji glave
-  - T vrijednosti u tablici odražavaju stvarnu poziciju u 3D prostoru
+Ako je koordinatni sustav i dalje krivo pomaknut:
+1. Provjerite je li T u pravim jedinicama (mm vs m)
+2. Provjerite je li K matrica ispravna za vašu kameru
+3. Provjerite je li R matrica u ispravnom redoslijedu (row-major vs col-major)
 """)
     print("="*130 + "\n")
 
