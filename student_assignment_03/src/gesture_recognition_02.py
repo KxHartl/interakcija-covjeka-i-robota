@@ -72,9 +72,9 @@ def classify_hand_by_landmarks(landmarks):
         cross_z = v1[0] * v2[1] - v1[1] * v2[0]
         # cross_z sign indicates orientation: positive -> index to pinky turns CCW
         if cross_z > 0:
-            return 'Right'
+            return 'left'
         else:
-            return 'Left'
+            return 'right'
     except Exception:
         return None
 
@@ -168,6 +168,7 @@ try:
                 if results.multi_handedness and len(results.multi_handedness) > i:
                     try:
                         hand_label = results.multi_handedness[i].classification[0].label
+                        hand_label = classify_hand_by_landmarks(landmarks)
                     except Exception:
                         hand_label = None
 
