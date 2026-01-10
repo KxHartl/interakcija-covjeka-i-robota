@@ -19,6 +19,19 @@ from pathlib import Path
 import pandas as pd
 import mediapipe as mp
 
+
+def _normalize_angle_deg(a: float) -> float:
+    """Normalize angle to (-180, 180] degrees."""
+    return ((a + 180.0) % 360.0) - 180.0
+
+
+def _closest_angle_to(angle: float, reference: float) -> float:
+    """Return the equivalent of `angle` (shifted by multiples of 360) closest to `reference`."""
+    a = _normalize_angle_deg(angle)
+    candidates = [a, a + 360.0, a - 360.0]
+    best = min(candidates, key=lambda x: abs(x - reference))
+    return best
+
 # Intrinzična matrica kamere za BIWI
 K = np.array([[575.816, 0.0, 320.0],
               [0.0, 575.816, 240.0],
@@ -442,6 +455,25 @@ def process_frames_comparison(frame_ids: list, data_root: Path):
 
             pitch_mp, yaw_mp, roll_mp, mp_pose = pitch_mp_res
             R_mp, origin_mp = mp_pose
+
+            # Adjust MediaPipe angles to be the equivalent closest to BIWI (circular difference)
+            def _angle_diff(a, b):
+                return ((a - b + 180.0) % 360.0) - 180.0
+
+            # If circular difference is large (>90°), flip by 180° to the closer equivalent
+            for name, a_mp, a_biwi in (('pitch', pitch_mp, pitch_biwi), ('yaw', yaw_mp, yaw_biwi), ('roll', roll_mp, roll_biwi)):
+                d = _angle_diff(a_mp, a_biwi)
+                if abs(d) > 90.0:
+                    # shift by -sign(d)*180 to reduce difference
+                    a_mp = a_mp - math.copysign(180.0, d)
+                a_mp = _normalize_angle_deg(a_biwi + _angle_diff(a_mp, a_biwi))
+                if name == 'pitch':
+                    pitch_mp = a_mp
+                elif name == 'yaw':
+                    yaw_mp = a_mp
+                else:
+                    roll_mp = a_mp
+
             # Izračun razlike
             pitch_diff = abs(pitch_biwi - pitch_mp)
             yaw_diff = abs(yaw_biwi - yaw_mp)
@@ -508,11 +540,11 @@ def process_frames_comparison(frame_ids: list, data_root: Path):
             cv2.putText(img_vis, "=== Razlika ===", (10, y_offset + 10*line_height),
                        cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 0), 2)
             cv2.putText(img_vis, f"ΔPitch: {pitch_diff:6.2f}°", (10, y_offset + 11*line_height),
-                       cv2.FONT_HERSHEY_SIMPLEX, 0.6, (200, 100, 100), 1)
+                       cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 255), 1)
             cv2.putText(img_vis, f"ΔYaw:   {yaw_diff:6.2f}°", (10, y_offset + 12*line_height),
-                       cv2.FONT_HERSHEY_SIMPLEX, 0.6, (100, 200, 100), 1)
+                       cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 1)
             cv2.putText(img_vis, f"ΔRoll:  {roll_diff:6.2f}°", (10, y_offset + 13*line_height),
-                       cv2.FONT_HERSHEY_SIMPLEX, 0.6, (100, 100, 200), 1)
+                       cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 0, 0), 1)
             
             # Spremi sliku
             output_dir = Path("outputs")
