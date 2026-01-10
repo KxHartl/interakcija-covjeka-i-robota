@@ -2,7 +2,7 @@
 PRAĆENJE BRZINE GIBANJA ZAPEŠĆA - LIVE FEED
 ==========================================================================================
 
-Datum i vrijeme snimanja: 2026-01-09 23:42:24
+Datum i vrijeme snimanja: 2026-01-10 19:09:36
 
 PARAMETRI KAMERE:
 --------------------------------------------------
@@ -13,32 +13,32 @@ Vrijeme po frame-u: 33.33ms
 KALIBRACIJA:
 --------------------------------------------------
 Pretpostavljena distanca: 30cm
-Inicialna konverzija (heuristika): 0.1752 cm/piksel
-ili 5.71 piksela/cm
+Inicialna konverzija (heuristika): 0.1487 cm/piksel
+ili 6.73 piksela/cm
 Iris kalibracija primijenjena: Da
-Zadnja iris konverzija: 0.17518 cm/piksel
+Zadnja iris konverzija: 0.14869 cm/piksel
 
 OPĆE INFORMACIJE:
 --------------------------------------------------
-Ukupno frame-ova: 436
-Ukupno vremena: 15.28s
-Prosječni FPS: 28.53
-Broj mjerenja brzine (desno): 101
-Broj mjerenja brzine (lijevo): 62
+Ukupno frame-ova: 2053
+Ukupno vremena: 69.21s
+Prosječni FPS: 29.66
+Broj mjerenja brzine (desno): 1125
+Broj mjerenja brzine (lijevo): 452
 
 STATISTIKA BRZINE ZAPEŠĆA (DESNO):
 --------------------------------------------------
-Prosječna brzina: 1.587 m/s
-Minimalna brzina: 0.074 m/s
-Maksimalna brzina: 6.250 m/s
-Standardna devijacija: 1.386 m/s
+Prosječna brzina: 0.566 m/s
+Minimalna brzina: 0.000 m/s
+Maksimalna brzina: 10.647 m/s
+Standardna devijacija: 1.921 m/s
 
 STATISTIKA BRZINE ZAPEŠĆA (LIJEVO):
 --------------------------------------------------
-Prosječna brzina: 0.853 m/s
-Minimalna brzina: 0.022 m/s
-Maksimalna brzina: 5.873 m/s
-Standardna devijacija: 1.232 m/s
+Prosječna brzina: 0.721 m/s
+Minimalna brzina: 0.000 m/s
+Maksimalna brzina: 8.494 m/s
+Standardna devijacija: 1.629 m/s
 
 DETALJNI PODACI (CSV):
 CSV datoteka: outputs/body_pose_estimation_04_results.csv
