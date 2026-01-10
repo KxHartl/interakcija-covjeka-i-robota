@@ -104,19 +104,19 @@ def classify_gaze_direction(pitch: float, yaw: float, roll: float) -> dict:
     
     # PITCH klasifikacija
     if pitch < -10:
-        pitch_class = "Gleda dolje"
+        pitch_class = "Gleda gore"
     elif -10 <= pitch < 10:
         pitch_class = "Gleda neutralno"
     else:  # pitch >= 10
-        pitch_class = "Gleda gore"
+        pitch_class = "Gleda dolje"
     
     # ROLL klasifikacija
     if roll < -10:
-        roll_class = "Nagib glave lijevo"
+        roll_class = "Nagib glave desno"
     elif -10 <= roll < 10:
         roll_class = "Nema nagiba glave"
     else:  # roll >= 10
-        roll_class = "Nagib glave desno"
+        roll_class = "Nagib glave lijevo"
     
     return {
         "yaw_class": yaw_class,
