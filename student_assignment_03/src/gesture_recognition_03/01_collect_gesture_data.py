@@ -124,7 +124,7 @@ if collected_data:
     header.append('label')
 
     # Spremi CSV
-    csv_path = 'gesture_data.csv'
+    csv_path = './outputs/gesture_data.csv'
     os.makedirs('.', exist_ok=True)
     with open(csv_path, 'w', newline='') as f:
         writer = csv.writer(f)

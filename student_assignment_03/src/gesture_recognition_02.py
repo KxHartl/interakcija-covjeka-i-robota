@@ -1,7 +1,6 @@
 import numpy as np
 import cv2
 import mediapipe as mp
-from pathlib import Path
 
 mp_hands = mp.solutions.hands
 mp_drawing = mp.solutions.drawing_utils
