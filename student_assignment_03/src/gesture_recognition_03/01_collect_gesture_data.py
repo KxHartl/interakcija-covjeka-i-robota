@@ -12,7 +12,7 @@ hands = mp_hands.Hands(static_image_mode=False,
 collected_data = []
 current_gesture = None
 frame_count = 0
-target_frames = 50
+target_frames = 5
 
 cap = cv2.VideoCapture(0)
 cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
