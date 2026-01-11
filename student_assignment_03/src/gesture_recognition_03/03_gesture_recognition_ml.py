@@ -9,8 +9,8 @@ print("REAL-TIME GESTURE RECOGNITION - SVM MODEL")
 print("="*60)
 
 # Provjeri da li model datoteke postoje
-model_path = 'gesture_model.pkl'
-scaler_path = 'scaler.pkl'
+model_path = './outputs/gesture_model.pkl'
+scaler_path = './outputs/scaler.pkl'
 
 if not os.path.exists(model_path) or not os.path.exists(scaler_path):
     print(f"\n❌ GREŠKA: Model datoteke nisu pronaden!")
@@ -136,12 +136,10 @@ try:
 
         # Prikaži header
         cv2.rectangle(frame, (0, 0), (w, 120), (0, 0, 0), -1)
-        cv2.putText(frame, "Real-time Gesture Recognition (SVM Model + Validation)",
+        cv2.putText(frame, "Real-time Gesture Recognition",
                    (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (255, 255, 255), 2)
         cv2.putText(frame, "Geste: THUMBS_UP, THUMBS_DOWN",
                    (10, 60), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 255), 1)
-        cv2.putText(frame, f"Model: SVM (RBF) | Confidence: {MIN_CONFIDENCE_THRESHOLD*100:.0f}% | Gap: {MIN_CLASS_PROBABILITY_GAP*100:.0f}%",
-                   (10, 90), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (200, 200, 200), 1)
 
         gesture_detected = False
 

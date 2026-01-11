@@ -12,7 +12,7 @@ print("THUMBS UP vs THUMBS DOWN")
 print("="*60)
 
 # Provjeri da li CSV datoteka postoji
-csv_path = 'gesture_data.csv'
+csv_path = './outputs/gesture_data.csv'
 if not os.path.exists(csv_path):
     print(f"\n❌ GREŠKA: {csv_path} nije pronaden!")
     print("Prvo trebas pokrenuti 01_collect_gesture_data.py")
@@ -80,8 +80,8 @@ print(f"   False Negatives: {cm[1,0]}, True Positives: {cm[1,1]}")
 
 # Spremi model i scaler
 print(f"\n8. Spremi model i scaler...")
-model_path = 'gesture_model.pkl'
-scaler_path = 'scaler.pkl'
+model_path = './outputs/gesture_model.pkl'
+scaler_path = './outputs/scaler.pkl'
 
 with open(model_path, 'wb') as f:
     pickle.dump(model, f)
