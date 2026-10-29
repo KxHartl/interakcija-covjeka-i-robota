@@ -19,7 +19,7 @@ Program koji detektira točku nosa studenta koristeći kameru laptopa i klasific
 
 ```bash
 git clone https://github.com/KxHartl/interakcija-covjeka-i-robota.git
-cd interakcija-covjeka-i-robota/student-assignment-02
+cd interakcija-covjeka-i-robota/student_assignment_02
 ```
 
 ### 2. Instalacija Potrebnih Paketa
@@ -36,8 +36,6 @@ Model će se automatski preuzeti pri prvom pokretanju, ili ga možete ručno pre
 cd src
 python -c "from ultralytics import YOLO; YOLO('yolo11s-pose.pt')"
 ```
-
-Alternativno, možete kopirati model iz `/luka/HRI/yolo11s-pose.pt` ako je dostupan.
 
 ## Pokretanje Programa
 
@@ -86,7 +84,7 @@ Program prikazuje:
 ## Struktura Datoteka
 
 ```
-student-assignment-02/
+student_assignment_02/
 ├── README.md              # Ovaj dokument
 ├── src/
 │   ├── nose_detection.py  # Glavna aplikacija
@@ -120,7 +118,7 @@ student-assignment-02/
 
 ### Referentne Datoteke:
 
-Program je baziran na primjerima iz `/luka/HRI/` direktorija:
+Program je baziran na YOLO11 pose primjerima s vježbi (nisu dio ovog repozitorija):
 - `02_YOLO11_pose_extracted_points.py` - Ekstraktiranje ključnih točaka
 - `03_YOLO11_pose_extracted_line.py` - Crtanje linija između točaka
 - `04_YOLO11_pose_depth_estimation.py` - Procjena dubine

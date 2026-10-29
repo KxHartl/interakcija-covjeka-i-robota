@@ -13,7 +13,7 @@ Ako nos nije unutar pravokutnika, onda će biti **crven**.
 Udšte u direktorij projekta:
 
 ```bash
-cd student-assignment-02
+cd student_assignment_02
 ```
 
 Installirajte potrebne pakete:
@@ -121,7 +121,7 @@ detector = NoseDetector(
   self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 720)
   ```
 
-## Koristeći Primjere iz /luka/HRI/
+## Koristeći YOLO11 pose primjere s vježbi
 
 Program je baziran na sljedećim primjerima:
 
@@ -244,17 +244,12 @@ Da! Možete:
 
 ```
 interakcija-covjeka-i-robota/
-├── student-assignment-02/
+├── student_assignment_02/
 │   ├── README.md                 # Glavni README
 │   ├── UPUTE.md                  # Ove upute
 │   └── src/
 │       ├── nose_detection.py      # Glavna aplikacija
 │       └── requirements.txt        # Potrebni paketi
-├── luka/
-│   ├── HRI/
-│   │   ├── 02_YOLO11_pose_extracted_points.py
-│   │   ├── 03_YOLO11_pose_extracted_line.py
-│   │   └── yolo11s-pose.pt
 └── README.md
 ```
 

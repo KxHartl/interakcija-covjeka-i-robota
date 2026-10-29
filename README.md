@@ -20,11 +20,10 @@ recognising hand gestures.
 
 | Folder | What it does |
 |---|---|
-| `student_assignment_01` | Fast and slow motion classification. Tool position and force were recorded at 100 Hz while a Universal Robots cobot was guided by hand. The scripts remove idle segments, compute average speed and force per recording, train an LDA classifier and validate it on recordings from other groups. Report: [PDF](student_assignment_01/Kresimir_Hartl_Z1.pdf) and [Markdown](student_assignment_01/Izvjesce_Z1_Hartl.md) (Croatian). |
+| `student_assignment_01` | Fast and slow motion classification. Tool position and force were recorded at 100 Hz while a Universal Robots cobot was guided by hand. The scripts remove idle segments, compute average speed and force per recording, train an LDA classifier and validate it on recordings from other groups. The repository holds only this group's recordings (`datasets/norsic-hartl`). Report: [PDF](student_assignment_01/Kresimir_Hartl_Z1.pdf) and [Markdown](student_assignment_01/Izvjesce_Z1_Hartl.md) (Croatian). |
 | `student_assignment_02` | Nose detection with YOLO11 pose on a laptop camera. The program draws a rectangle that turns green when the nose is inside it and red when it is outside. |
 | `student_assignment_03` | Body pose, head pose and gesture recognition. MediaPipe keypoints are compared with the PennAction ground truth, joint angles and body tilt are computed, head orientation is checked against the BIWI head pose data and used to classify gaze direction, and new gestures are recognised both with hand-written rules and with a trained classifier. Report: [PDF](student_assignment_03/report/Kresimir_Hartl_Z2.pdf) (Croatian). |
 | `skeletonizacija` | Exercise scripts for body keypoints with MediaPipe, from a single image to a RealSense feed, and a comparison with PennAction ground truth. |
-| `luka/HRI` | YOLO11 pose example scripts, step by step from a photo to depth from a RealSense camera, with model weights. |
 
 ## How to run
 
@@ -44,3 +43,13 @@ python src/body_pose_estimation_01.py
 
 More detail on assignment 2, including troubleshooting, is in
 [`student_assignment_02/README.md`](student_assignment_02/README.md) (Croatian).
+
+## Data not included
+
+The public datasets used in assignment 3 are not in the repository because they show people's
+faces. Download them from their publishers and place them as follows:
+
+- PennAction (University of Pennsylvania), sequence `1137`: frames and `1137.mat` into
+  `student_assignment_03/data/raw/1137/` (and `skeletonizacija/data/raw/1137/` for the exercise scripts).
+- BIWI Kinect Head Pose Database (ETH Zurich), subjects `03`, `05`, `07`, `10`, `11`, `15`, `17`,
+  `20`, `21` and `24`: into `student_assignment_03/data/raw/hpe/<subject>/`.

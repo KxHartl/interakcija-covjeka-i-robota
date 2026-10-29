@@ -25,21 +25,18 @@ x,y,z,fx,fy,fz
 ## Struktura direktorija
 
 ```
-student-assingment-01/
+student_assignment_01/
 ├── datasets/                    # Direktorij s CSV datotekama
-│   ├── norsic/
-│   │   ├── norsic_brza01.csv
-│   │   ├── norsic_spora01.csv
+│   ├── norsic-hartl/
+│   │   ├── norsic-brzo-csv/
+│   │   │   ├── 1.csv
+│   │   │   └── ...
 │   │   └── ...
-│   └── ...
+│   └── normalized/
+├── plots/                       # Direktorij s generiranim grafovima (auto-kreiran)
 └── src/
-    └── data-preparation/
-        ├── plot_original_data.py    # Glavni program
-        ├── README.md                # Upute (ova datoteka)
-        └── plots/                   # Direktorij s generiranim grafovima (auto-kreiran)
-            ├── norsic_brza01_plot.png
-            ├── norsic_spora01_plot.png
-            └── ...
+    ├── plot_original_data.py    # Glavni program
+    └── ...
 ```
 
 ## Instalacija potrebnih paketa
@@ -52,13 +49,13 @@ pip install pandas matplotlib numpy
 
 ### 1. Plotanje svih datoteka iz direktorija
 
-Pokrenite program iz direktorija `src/data-preparation/`:
+Pokrenite program iz direktorija `student_assignment_01/`:
 
 ```bash
-python plot_original_data.py
+python src/plot_original_data.py
 ```
 
-Program će automatski pronaći sve CSV datoteke u direktoriju `../../datasets` (rekurzivno) i kreirati grafove u direktoriju `plots/`.
+Program će automatski pronaći sve CSV datoteke u direktoriju `datasets` (rekurzivno) i kreirati grafove u direktoriju `plots/`.
 
 ### 2. Plotanje jedne datoteke
 
@@ -66,7 +63,7 @@ Za plotanje jedne specifične datoteke, uredite `__main__` blok u programu:
 
 ```python
 if __name__ == "__main__":
-    plot_data('../../datasets/norsic/norsic_brza01.csv')
+    plot_data('datasets/norsic-hartl/norsic-brzo-csv/1.csv')
 ```
 
 ili unutar drugog Python skripta:
@@ -103,7 +100,7 @@ Učitava CSV i crta graf.
 - `csv_file`: Put do CSV datoteke
 - `output_dir`: Direktorij za spremanje grafova
 
-### `plot_all_data(data_dir='../../datasets', output_dir='plots')`
+### `plot_all_data(data_dir='.', output_dir='plots')`
 Plotanje svih CSV datoteka iz direktorija.
 
 **Parametri:**

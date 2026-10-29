@@ -8,3 +8,31 @@
 *.mov
 *.mp4
 *.mkv
+
+# Python caches and virtual environments
+__pycache__/
+*.py[cod]
+.venv*/
+venv/
+
+# Office lock files and editor temp files
+~$*
+*.tmp
+*.swp
+
+# Kept on disk only: third-party material (public repository)
+# other people's work
+luka/
+# course lecture and assignment slides
+skeletonizacija/prezentacije/
+student_assignment_03/prezentacije/
+# PennAction frames and BIWI Kinect Head Pose data (people's faces)
+skeletonizacija/data/raw/1137/
+student_assignment_03/data/raw/1137/
+student_assignment_03/data/raw/hpe/
+student_assignment_03/outputs/head_pose_estimation_0*_frame_*.png
+# other groups' recordings and plots
+student_assignment_01/datasets/akrap-gugo/
+student_assignment_01/datasets/cuk-pongracic/
+student_assignment_01/plots/akrap_gugo/
+student_assignment_01/plots/cuk_pongracic/

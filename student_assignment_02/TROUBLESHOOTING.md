@@ -38,12 +38,6 @@ cap = cv2.VideoCapture(1)  # Try second camera
 python -c "from ultralytics import YOLO; YOLO('yolo11s-pose.pt')"
 ```
 
-**Solution 2: Copy from /luka/HRI/**
-
-```bash
-cp ../luka/HRI/yolo11s-pose.pt src/
-```
-
 ### 3. Missing Dependencies
 
 #### Error: "ModuleNotFoundError: No module named 'ultralytics'"
